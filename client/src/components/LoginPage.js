@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL,
@@ -13,6 +14,7 @@ function LoginPage() {
   const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +35,7 @@ function LoginPage() {
         });
         localStorage.setItem('session', JSON.stringify(data.session));
         alert('Login successful!');
+        navigate('/profile');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
