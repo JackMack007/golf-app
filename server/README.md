@@ -10,6 +10,10 @@ The backend is an Express server (`server/index.js`) that provides authenticatio
 - `POST /api/auth/logout`: Logs out the user.
 - `GET /api/profile`: Retrieves the authenticated user's profile from the `users` table.
 - `PUT /api/profile`: Updates the authenticated user's profile in the `users` table.
+- `POST /api/courses`: Creates a new golf course record for the authenticated user.
+- `GET /api/courses`: Retrieves all golf course records (publicly accessible).
+- `PUT /api/courses/:id`: Updates a golf course record if the authenticated user is the creator.
+- `DELETE /api/courses/:id`: Deletes a golf course record if the authenticated user is the creator.
 - `GET /api/test-supabase`: Tests Supabase connectivity.
 
 ## Configuration
@@ -40,7 +44,7 @@ npm run dev
 ## Database Schema
 
 ### `courses` Table
-Stores golf course data with the following schema:
+- Stores golf course data with the following schema:
 
 - **course_id**: `uuid`, Primary Key, Default: `gen_random_uuid()`, Unique identifier for the course.
 - **name**: `varchar`, Not Null, Name of the golf course (e.g., 'Sunny Hills Golf Course').
@@ -67,3 +71,4 @@ Stores golf course data with the following schema:
   - Role: `public`
   - Expression: `true`
   - Description: Allows anyone (authenticated or not) to read all courses.
+

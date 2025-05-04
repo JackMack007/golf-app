@@ -131,6 +131,56 @@ app.get('/api/courses', async (req, res) => {
   res.json(data);
 });
 
+// Course endpoint: Update course
+app.put('/api/courses/:id', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { id } = req.params;
+  const { name, location, par, slope_value, course_value } = req.body;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { data, error: dbError } = await supabase
+    .from('courses')
+    .update({ name, location, par, slope_value, course_value })
+    .eq('course_id', id)
+    .eq('created_by', user.id)
+    .select()
+    .single();
+
+  if (dbError) return res.status(400).json({ error: 'Failed to update course', details: dbError.message });
+  if (!data) return res.status(404).json({ error: 'Course not found or not owned by user' });
+  res.json({ message: 'Course updated successfully', data });
+});
+
+// Course endpoint: Delete course
+app.delete('/api/courses/:id', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { id } = req.params;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { error: dbError } = await supabase
+    .from('courses')
+    .delete()
+    .eq('course_id', id)
+    .eq('created_by', user.id);
+
+  if (dbError) return res.status(400).json({ error: 'Failed to delete course', details: dbError.message });
+  res.json({ message: 'Course deleted successfully' });
+});
+
 // Diagnostic endpoint: Test Supabase connection
 app.get('/api/test-supabase', async (req, res) => {
   try {
