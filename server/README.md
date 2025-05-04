@@ -36,3 +36,34 @@ npm run dev
 ## Notes
 - The getUser calls in profile endpoints use the raw access token (without Bearer prefix).
 - RLS policies are configured in Supabase for users table (INSERT: anon, SELECT/UPDATE: authenticated).
+
+## Database Schema
+
+### `courses` Table
+Stores golf course data with the following schema:
+
+- **course_id**: `uuid`, Primary Key, Default: `gen_random_uuid()`, Unique identifier for the course.
+- **name**: `varchar`, Not Null, Name of the golf course (e.g., 'Sunny Hills Golf Course').
+- **location**: `varchar`, Not Null, Location of the course (e.g., 'Orlando, FL').
+- **par**: `int2`, Not Null, Total par for the course (e.g., 72).
+- **created_by**: `uuid`, Not Null, Foreign Key to `users.user_id`, UUID of the user who created the course.
+- **slope_value**: `integer`, Not Null, Slope rating of the course (e.g., 113).
+- **course_value**: `numeric(4,1)`, Not Null, Course rating (e.g., 72.5).
+- **created_at**: `timestamptz`, Not Null, Default: `now()`, Timestamp of record creation.
+
+**RLS Policies**:
+- **Insert Own Courses**:
+  - Operation: `INSERT`
+  - Role: `authenticated`
+  - Expression: `auth.uid() = created_by`
+  - Description: Allows authenticated users to insert courses where `created_by` matches their user ID.
+- **View Own Courses**:
+  - Operation: `SELECT`
+  - Role: `authenticated`
+  - Expression: `auth.uid() = created_by`
+  - Description: Allows authenticated users to view courses they created.
+- **Public Read Access**:
+  - Operation: `SELECT`
+  - Role: `public`
+  - Expression: `true`
+  - Description: Allows anyone (authenticated or not) to read all courses.
