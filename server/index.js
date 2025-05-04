@@ -9,10 +9,12 @@ app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// Test endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
 });
 
+// Auth endpoint: Sign up
 app.post('/api/auth/signup', async (req, res) => {
   const { email, password, name } = req.body;
   const { data, error } = await supabase.auth.signUp({
@@ -30,6 +32,7 @@ app.post('/api/auth/signup', async (req, res) => {
   res.json({ user: data.user });
 });
 
+// Auth endpoint: Login
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -37,12 +40,14 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ user: data.user, session: data.session });
 });
 
+// Auth endpoint: Logout
 app.post('/api/auth/logout', async (req, res) => {
   const { error } = await supabase.auth.signOut();
   if (error) return res.status(400).json({ error: error.message });
   res.json({ message: 'Logged out successfully' });
 });
 
+// Profile endpoint: Get profile
 app.get('/api/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
@@ -64,6 +69,7 @@ app.get('/api/profile', async (req, res) => {
   res.json(profile);
 });
 
+// Profile endpoint: Update profile
 app.put('/api/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
@@ -85,6 +91,47 @@ app.put('/api/profile', async (req, res) => {
   res.json({ message: 'Profile updated successfully' });
 });
 
+// Course endpoint: Create course
+app.post('/api/courses', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { name, location, par, slope_value, course_value } = req.body;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { data, error: dbError } = await supabase
+    .from('courses')
+    .insert({
+      name,
+      location,
+      par,
+      created_by: user.id,
+      slope_value,
+      course_value
+    })
+    .select()
+    .single();
+
+  if (dbError) return res.status(400).json({ error: 'Failed to create course', details: dbError.message });
+  res.json(data);
+});
+
+// Course endpoint: Get all courses
+app.get('/api/courses', async (req, res) => {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('course_id, name, location, par, created_by, slope_value, course_value, created_at');
+
+  if (error) return res.status(400).json({ error: 'Failed to fetch courses', details: error.message });
+  res.json(data);
+});
+
+// Diagnostic endpoint: Test Supabase connection
 app.get('/api/test-supabase', async (req, res) => {
   try {
     const { data, error } = await supabase.from('users').select('user_id').limit(1);

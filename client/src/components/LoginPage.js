@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL,
@@ -106,12 +106,24 @@ function LoginPage() {
           {isSignUp ? 'Switch to Login' : 'Switch to Sign Up'}
         </button>
         {!isSignUp && (
-          <button
-            onClick={handleLogout}
-            className="w-full mt-4 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
-          >
-            Logout
-          </button>
+          <>
+            <button
+              onClick={handleLogout}
+              className="w-full mt-4 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
+            >
+              Logout
+            </button>
+            <div className="mt-4 text-center">
+              <Link to="/profile" className="text-blue-500 hover:underline">
+                Go to Profile
+              </Link>
+            </div>
+            <div className="mt-2 text-center">
+              <Link to="/courses" className="text-blue-500 hover:underline">
+                Go to Courses
+              </Link>
+            </div>
+          </>
         )}
       </div>
     </div>
