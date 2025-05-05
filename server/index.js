@@ -7,7 +7,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://golf-app-frontend-m135cf7pr-jirmers-projects.vercel.app' 
+  'https://golf-app-frontend-g8vyilnqb-jirmers-projects.vercel.app' 
 ];
 app.use(cors({
   origin: (origin, callback) => {
