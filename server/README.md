@@ -72,3 +72,36 @@ npm run dev
   - Expression: `true`
   - Description: Allows anyone (authenticated or not) to read all courses.
 
+### `scores` Table
+Stores golf score data with the following schema:
+
+- **score_id**: `uuid`, Primary Key, Default: `gen_random_uuid()`, Unique identifier for the score.
+- **user_id**: `uuid`, Not Null, Foreign Key to `users.user_id`, UUID of the user who recorded the score.
+- **course_id**: `uuid`, Not Null, Foreign Key to `courses.course_id`, UUID of the course played.
+- **score_value**: `integer`, Not Null, The total score for the round (e.g., 75).
+- **date_played**: `date`, Not Null, Date the round was played (e.g., '2025-05-03').
+- **notes**: `text`, Nullable, Optional notes about the round (e.g., 'Windy conditions').
+
+**RLS Policies**:
+- **Insert Own Scores**:
+  - Operation: `INSERT`
+  - Role: `authenticated`
+  - USING Expression: `auth.uid() = user_id`
+  - WITH CHECK Expression: `auth.uid() = user_id`
+  - Description: Allows authenticated users to insert scores where `user_id` matches their user ID.
+- **View Own Scores**:
+  - Operation: `SELECT`
+  - Role: `authenticated`
+  - USING Expression: `auth.uid() = user_id`
+  - Description: Allows authenticated users to view their own scores.
+- **Update Own Scores**:
+  - Operation: `UPDATE`
+  - Role: `authenticated`
+  - USING Expression: `auth.uid() = user_id`
+  - WITH CHECK Expression: `auth.uid() = user_id`
+  - Description: Allows authenticated users to update their own scores.
+- **Delete Own Scores**:
+  - Operation: `DELETE`
+  - Role: `authenticated`
+  - USING Expression: `auth.uid() = user_id`
+  - Description: Allows authenticated users to delete their own scores.
