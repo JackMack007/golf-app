@@ -123,6 +123,11 @@ function LoginPage() {
                 Go to Courses
               </Link>
             </div>
+            <div className="mt-2 text-center">
+              <Link to="/scores" className="text-blue-500 hover:underline">
+                Go to Scores
+              </Link>
+            </div>
           </>
         )}
       </div>

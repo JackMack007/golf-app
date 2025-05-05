@@ -14,6 +14,10 @@ The backend is an Express server (`server/index.js`) that provides authenticatio
 - `GET /api/courses`: Retrieves all golf course records (publicly accessible).
 - `PUT /api/courses/:id`: Updates a golf course record if the authenticated user is the creator.
 - `DELETE /api/courses/:id`: Deletes a golf course record if the authenticated user is the creator.
+- `POST /api/scores`: Creates a new golf score record for the authenticated user.
+- `GET /api/scores`: Retrieves all golf score records for the authenticated user.
+- `PUT /api/scores/:id`: Updates a golf score record if the authenticated user is the owner.
+- `DELETE /api/scores/:id`: Deletes a golf score record if the authenticated user is the owner.
 - `GET /api/test-supabase`: Tests Supabase connectivity.
 
 ## Configuration

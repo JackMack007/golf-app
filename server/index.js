@@ -181,6 +181,106 @@ app.delete('/api/courses/:id', async (req, res) => {
   res.json({ message: 'Course deleted successfully' });
 });
 
+// Score endpoint: Create score
+app.post('/api/scores', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { course_id, score_value, date_played, notes } = req.body;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { data, error: dbError } = await supabase
+    .from('scores')
+    .insert({
+      user_id: user.id,
+      course_id,
+      score_value,
+      date_played,
+      notes
+    })
+    .select()
+    .single();
+
+  if (dbError) return res.status(400).json({ error: 'Failed to create score', details: dbError.message });
+  res.json(data);
+});
+
+// Score endpoint: Get all scores for user
+app.get('/api/scores', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { data, error: dbError } = await supabase
+    .from('scores')
+    .select('score_id, user_id, course_id, score_value, date_played, notes')
+    .eq('user_id', user.id);
+
+  if (dbError) return res.status(400).json({ error: 'Failed to fetch scores', details: dbError.message });
+  res.json(data);
+});
+
+// Score endpoint: Update score
+app.put('/api/scores/:id', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { id } = req.params;
+  const { course_id, score_value, date_played, notes } = req.body;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { data, error: dbError } = await supabase
+    .from('scores')
+    .update({ course_id, score_value, date_played, notes })
+    .eq('score_id', id)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (dbError) return res.status(400).json({ error: 'Failed to update score', details: dbError.message });
+  if (!data) return res.status(404).json({ error: 'Score not found or not owned by user' });
+  res.json({ message: 'Score updated successfully', data });
+});
+
+// Score endpoint: Delete score
+app.delete('/api/scores/:id', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+
+  const { id } = req.params;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    console.error('getUser error:', error?.message || 'No user found');
+    return res.status(401).json({ error: 'Unauthorized', details: error?.message || 'No user found' });
+  }
+
+  const { error: dbError } = await supabase
+    .from('scores')
+    .delete()
+    .eq('score_id', id)
+    .eq('user_id', user.id);
+
+  if (dbError) return res.status(400).json({ error: 'Failed to delete score', details: dbError.message });
+  res.json({ message: 'Score deleted successfully' });
+});
+
 // Diagnostic endpoint: Test Supabase connection
 app.get('/api/test-supabase', async (req, res) => {
   try {
