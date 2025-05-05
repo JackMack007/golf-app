@@ -7,7 +7,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://golf-app-backend-brv2zd2k2-jirmers-projects.vercel.app'
+  'https://golf-app-frontend-m135cf7pr-jirmers-projects.vercel.app' 
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -262,7 +262,8 @@ app.put('/api/scores/:id', async (req, res) => {
     .from('scores')
     .update({ course_id, score_value, date_played, notes })
     .eq('score_id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', user architecture: x86_64
+  .id)
     .select()
     .single();
 
