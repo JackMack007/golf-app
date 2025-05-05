@@ -4,7 +4,20 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: 'c:/golf-app/server/.env' });
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000' }));
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://golf-app-backend-brv2zd2k2-jirmers-projects.vercel.app'
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);

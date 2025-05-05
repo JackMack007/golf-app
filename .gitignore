@@ -3,3 +3,4 @@ server/.env
 server/test.js
 client/package.json
 client/.env
+client/build
