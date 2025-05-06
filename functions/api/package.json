@@ -1,0 +1,16 @@
+{
+  "name": "golf-app-backend",
+  "version": "1.0.0",
+  "description": "Express backend for golf app on Netlify Functions",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "serverless-http": "^3.1.0",
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.39.3",
+    "dotenv": "^16.0.0"
+  }
+}

@@ -1,13 +1,14 @@
 const express = require('express');
+const serverless = require('serverless-http');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: 'c:/golf-app/server/.env' });
+require('dotenv').config({ path: '.env' });
 
 const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://golf-app-frontend-indol.vercel.app/' 
+  'https://golf-app-frontend.netlify.app'
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -262,8 +263,7 @@ app.put('/api/scores/:id', async (req, res) => {
     .from('scores')
     .update({ course_id, score_value, date_played, notes })
     .eq('score_id', id)
-    .eq('user_id', user architecture: x86_64
-  .id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -307,5 +307,5 @@ app.get('/api/test-supabase', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Export for Netlify Functions
+module.exports.handler = serverless(app);
