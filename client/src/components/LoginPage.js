@@ -1,65 +1,122 @@
 import React, { useState } from 'react';
-import { signup, signin } from '../services/api';
+import { signup, signin } from '../services/api'; // Import API functions
+import { useNavigate, Link } from 'react-router-dom';
 
-const LoginPage = ({ onLogin }) => {
+function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState(null);
-  const [isSignup, setIsSignup] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     try {
-      const response = isSignup
-        ? await signup(email, password)
-        : await signin(email, password);
-      const user = response.data.user;
-      console.log(`${isSignup ? 'Signup' : 'Signin'} successful:`, user);
-      // Store user data (e.g., in localStorage for basic session management)
-      localStorage.setItem('user', JSON.stringify(user));
-      // Call onLogin prop to notify parent component (e.g., for navigation)
-      if (onLogin) onLogin(user);
-      // Reset form
-      setEmail('');
-      setPassword('');
+      if (isSignUp) {
+        const { data } = await signup(email, password);
+        alert('Sign-up successful! Please log in.');
+        setIsSignUp(false);
+      } else {
+        const { data } = await signin(email, password);
+        localStorage.setItem('session', JSON.stringify(data.session));
+        alert('Login successful!');
+        navigate('/profile');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || `${isSignup ? 'Signup' : 'Signin'} failed`);
+      setError(err.response?.data?.error || 'An error occurred');
     }
   };
 
+  const handleLogout = () => {
+    // Since there's no /api/auth/logout endpoint, clear session client-side
+    localStorage.removeItem('session');
+    alert('Logged out successfully!');
+    // If you add a logout endpoint to the backend later, you can call it here
+  };
+
   return (
-    <div>
-      <h1>{isSignup ? 'Sign Up' : 'Sign In'}</h1>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-          />
-        </div>
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-          />
-        </div>
-        <button type="submit">{isSignup ? 'Sign Up' : 'Sign In'}</button>
-        <button type="button" onClick={() => setIsSignup(!isSignup)}>
-          Switch to {isSignup ? 'Sign In' : 'Sign Up'}
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md w-96">
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          {isSignUp ? 'Sign Up' : 'Login'}
+        </h2>
+        <form onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div className="mb-4">
+              <label className="block text-gray-700">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full p-2 border rounded"
+                required
+              />
+            </div>
+          )}
+          <div className="mb-4">
+            <label className="block text-gray-700">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+          <button
+            type="submit"
+            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          >
+            {isSignUp ? 'Sign Up' : 'Login'}
+          </button>
+        </form>
+        <button
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="w-full mt-4 text-blue-500 hover:underline"
+        >
+          {isSignUp ? 'Switch to Login' : 'Switch to Sign Up'}
         </button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+        {!isSignUp && (
+          <>
+            <button
+              onClick={handleLogout}
+              className="w-full mt-4 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
+            >
+              Logout
+            </button>
+            <div className="mt-4 text-center">
+              <Link to="/profile" className="text-blue-500 hover:underline">
+                Go to Profile
+              </Link>
+            </div>
+            <div className="mt-2 text-center">
+              <Link to="/courses" className="text-blue-500 hover:underline">
+                Go to Courses
+              </Link>
+            </div>
+            <div className="mt-2 text-center">
+              <Link to="/scores" className="text-blue-500 hover:underline">
+                Go to Scores
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default LoginPage;
