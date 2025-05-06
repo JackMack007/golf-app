@@ -1,10 +1,10 @@
 {
   "name": "golf-app-backend",
   "version": "1.0.0",
-  "description": "Express backend for golf app on Netlify Functions",
-  "main": "index.js",
+  "description": "Backend for golf app",
+  "main": "functions/api/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node functions/api/index.js"
   },
   "dependencies": {
     "express": "^4.17.1",
