@@ -1,9 +1,12 @@
 exports.handler = async function(event, context) {
   console.log('Initializing api-test-native');
-  console.log('Event path:', event.path, 'Method:', event.httpMethod);
+  console.log('Raw event path:', event.path, 'Method:', event.httpMethod);
   try {
-    // Normalize path to remove function name or leading segments
-    const path = event.path.replace(/^\/\.netlify\/functions\/api-test-native/, '').replace(/^\/api-test-native/, '');
+    // Normalize path by removing Netlify function prefix and ensuring single leading slash
+    let path = event.path
+      .replace(/^\/\.netlify\/functions\/api-test-native\/?/, '/')
+      .replace(/^\/api-test-native\/?/, '/')
+      .replace(/^\/+/, '/'); // Ensure single leading slash
     console.log('Normalized path:', path);
     if (path === '/api/health' && event.httpMethod === 'GET') {
       console.log('Handling /api/health request');
