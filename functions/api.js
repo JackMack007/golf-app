@@ -45,7 +45,7 @@ exports.handler = async function(event, context) {
     // Route: POST /api/auth/signup
     if (path === '/api/auth/signup' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signup request');
-      const { email, password } = JSON.parse(event.body || '{}');
+      const { email, password, name } = JSON.parse(event.body || '{}');
       if (!email || !password) {
         console.log('Missing email or password');
         return {
@@ -67,7 +67,7 @@ exports.handler = async function(event, context) {
       const userId = data.user.id;
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({ user_id: userId, name: '', handicap: 0 });
+        .insert({ user_id: userId, name: name || '', handicap: 0 });
       if (profileError) {
         console.error('Profile creation error:', profileError.message);
         return {
@@ -278,15 +278,17 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'name, location, par, slope_value, and course_value are required' })
         };
       }
-      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
-      const userId = session?.user?.id;
-      if (!userId) {
+      const token = event.headers['authorization']?.split(' ')[1];
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
         };
       }
+      const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('courses')
         .insert([{ name, location, par, slope_value, course_value, created_by: userId }]);
@@ -366,15 +368,17 @@ exports.handler = async function(event, context) {
     // Route: GET /api/profile
     if (path === '/api/profile' && event.httpMethod === 'GET') {
       console.log('Handling /api/profile GET request');
-      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
-      const userId = session?.user?.id;
-      if (!userId) {
+      const token = event.headers['authorization']?.split(' ')[1];
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
         };
       }
+      const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -401,7 +405,7 @@ exports.handler = async function(event, context) {
         headers: corsHeaders,
         body: JSON.stringify({
           name: data.name || '',
-          email: session.user.email,
+          email: sessionData.user.email,
           handicap: data.handicap || 0
         })
       };
@@ -419,15 +423,17 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'name, email, and handicap are required' })
         };
       }
-      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
-      const userId = session?.user?.id;
-      if (!userId) {
+      const token = event.headers['authorization']?.split(' ')[1];
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
         };
       }
+      const userId = sessionData.user.id;
       // Update user email in Supabase auth
       const { error: authError } = await supabase.auth.updateUser({ email });
       if (authError) {

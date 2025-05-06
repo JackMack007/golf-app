@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signup, signin } from '../services/api'; // Import API functions
+import { signup, signin } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 
 function LoginPage() {
@@ -15,7 +15,7 @@ function LoginPage() {
     setError(null);
     try {
       if (isSignUp) {
-        const { data } = await signup(email, password);
+        const { data } = await signup(email, password, name);
         alert('Sign-up successful! Please log in.');
         setIsSignUp(false);
       } else {
@@ -30,10 +30,8 @@ function LoginPage() {
   };
 
   const handleLogout = () => {
-    // Since there's no /api/auth/logout endpoint, clear session client-side
     localStorage.removeItem('session');
     alert('Logged out successfully!');
-    // If you add a logout endpoint to the backend later, you can call it here
   };
 
   return (

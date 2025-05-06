@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
 });
 
 export const checkHealth = () => api.get('/api/health');
-export const signup = (email, password) => api.post('/api/auth/signup', { email, password });
+export const signup = (email, password, name) => api.post('/api/auth/signup', { email, password, name });
 export const signin = (email, password) => api.post('/api/auth/signin', { email, password });
 export const submitScore = (userId, score, course) => api.post('/api/scores', { userId, score, course });
 export const getScores = () => api.get('/api/scores');
