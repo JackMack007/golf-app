@@ -2,15 +2,24 @@
   "name": "golf-app-backend",
   "version": "1.0.0",
   "description": "Backend for golf app",
-  "main": "functions/api/index.js",
+  "main": "functions/api.js",
   "scripts": {
-    "start": "node functions/api/index.js"
+    "start": "node functions/api.js"
   },
   "dependencies": {
-    "express": "^4.17.1",
-    "serverless-http": "^3.1.0",
-    "cors": "^2.8.5",
-    "@supabase/supabase-js": "^2.39.3",
-    "dotenv": "^16.0.0"
+    "express": "4.20.0",
+    "serverless-http": "3.2.0",
+    "cors": "2.8.5",
+    "@supabase/supabase-js": "2.39.3",
+    "dotenv": "16.0.3",
+    "cookie": "0.7.0",
+    "path-to-regexp": "0.1.12",
+    "serve-static": "1.16.2"
+  },
+  "overrides": {
+    "cookie": "0.7.0",
+    "path-to-regexp": "0.1.12",
+    "serve-static": "1.16.2",
+    "send": "0.19.0"
   }
 }
