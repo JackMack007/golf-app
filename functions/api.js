@@ -3,15 +3,33 @@ require('dotenv').config({ path: '.env' });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// CORS headers to allow requests from the frontend
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://golf-app-frontend.netlify.app',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400'
+};
+
 exports.handler = async function(event, context) {
   console.log('Initializing api');
   console.log('Raw event path:', event.path, 'Method:', event.httpMethod);
+
+  // Handle OPTIONS preflight request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
     // Normalize path by removing Netlify function prefix and ensuring single leading slash
     let path = event.path
       .replace(/^\/\.netlify\/functions\/api\/?/, '/api/')
-      .replace(/^\/api\/api\/?/, '/api/') // Handle double /api/api/ from URL
-      .replace(/^\/+/, '/'); // Ensure single leading slash
+      .replace(/^\/api\/api\/?/, '/api/')
+      .replace(/^\/+/, '/');
     console.log('Normalized path:', path);
 
     // Route: GET /api/health
@@ -19,10 +37,8 @@ exports.handler = async function(event, context) {
       console.log('Handling /api/health request');
       return {
         statusCode: 200,
-        body: JSON.stringify({ status: 'Server is running' }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders,
+        body: JSON.stringify({ status: 'Server is running' })
       };
     }
 
@@ -34,10 +50,8 @@ exports.handler = async function(event, context) {
         console.log('Missing email or password');
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: 'Email and password are required' }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Email and password are required' })
         };
       }
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -45,19 +59,15 @@ exports.handler = async function(event, context) {
         console.error('Signup error:', error.message);
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: error.message }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
         };
       }
       console.log('Signup successful:', data.user.id);
       return {
         statusCode: 200,
-        body: JSON.stringify({ user: data.user }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders,
+        body: JSON.stringify({ user: data.user })
       };
     }
 
@@ -69,10 +79,8 @@ exports.handler = async function(event, context) {
         console.log('Missing email or password');
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: 'Email and password are required' }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Email and password are required' })
         };
       }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -80,56 +88,46 @@ exports.handler = async function(event, context) {
         console.error('Signin error:', error.message);
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: error.message }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
         };
       }
       console.log('Signin successful:', data.user.id);
       return {
         statusCode: 200,
-        body: JSON.stringify({ user: data.user, session: data.session }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders,
+        body: JSON.stringify({ user: data.user, session: data.session })
       };
     }
 
     // Route: POST /api/scores
     if (path === '/api/scores' && event.httpMethod === 'POST') {
       console.log('Handling /api/scores request');
-      const { userId, score, course } = JSON.parse(event.body || '{}');
+      const { userId, score, course, date_played, notes } = JSON.parse(event.body || '{}');
       if (!userId || !score || !course) {
         console.log('Missing userId, score, or course');
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: 'userId, score, and course are required' }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'userId, score, and course are required' })
         };
       }
       const { data, error } = await supabase
         .from('scores')
-        .insert([{ user_id: userId, score, course }]);
+        .insert([{ user_id: userId, score, course, date_played, notes }]);
       if (error) {
         console.error('Score submission error:', error.message);
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: error.message }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
         };
       }
       console.log('Score submitted:', data);
       return {
         statusCode: 200,
-        body: JSON.stringify({ score: data[0] }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders,
+        body: JSON.stringify({ score: data[0] })
       };
     }
 
@@ -143,38 +141,301 @@ exports.handler = async function(event, context) {
         console.error('Score retrieval error:', error.message);
         return {
           statusCode: 400,
-          body: JSON.stringify({ error: error.message }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
         };
       }
       console.log('Scores retrieved:', data.length);
       return {
         statusCode: 200,
-        body: JSON.stringify({ scores: data }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders,
+        body: JSON.stringify({ scores: data })
+      };
+    }
+
+    // Route: PUT /api/scores/:id
+    if (path.startsWith('/api/scores/') && event.httpMethod === 'PUT') {
+      const scoreId = path.split('/')[3];
+      console.log('Handling /api/scores/:id PUT request, scoreId:', scoreId);
+      const { course_id, score_value, date_played, notes } = JSON.parse(event.body || '{}');
+      if (!course_id || !score_value || !date_played) {
+        console.log('Missing course_id, score_value, or date_played');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'course_id, score_value, and date_played are required' })
+        };
+      }
+      const { data, error } = await supabase
+        .from('scores')
+        .update({ course_id, score: score_value, date_played, notes })
+        .eq('score_id', scoreId);
+      if (error) {
+        console.error('Score update error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Score updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ data: data[0] })
+      };
+    }
+
+    // Route: DELETE /api/scores/:id
+    if (path.startsWith('/api/scores/') && event.httpMethod === 'DELETE') {
+      const scoreId = path.split('/')[3];
+      console.log('Handling /api/scores/:id DELETE request, scoreId:', scoreId);
+      const { error } = await supabase
+        .from('scores')
+        .delete()
+        .eq('score_id', scoreId);
+      if (error) {
+        console.error('Score deletion error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Score deleted:', scoreId);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Score deleted successfully' })
+      };
+    }
+
+    // Route: GET /api/courses
+    if (path === '/api/courses' && event.httpMethod === 'GET') {
+      console.log('Handling /api/courses request');
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*');
+      if (error) {
+        console.error('Course retrieval error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Courses retrieved:', data.length);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
+      };
+    }
+
+    // Route: POST /api/courses
+    if (path === '/api/courses' && event.httpMethod === 'POST') {
+      console.log('Handling /api/courses request');
+      const { name, location, par, slope_value, course_value } = JSON.parse(event.body || '{}');
+      if (!name || !location || !par || !slope_value || !course_value) {
+        console.log('Missing required fields');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, location, par, slope_value, and course_value are required' })
+        };
+      }
+      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
+      const userId = session?.user?.id;
+      if (!userId) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+        };
+      }
+      const { data, error } = await supabase
+        .from('courses')
+        .insert([{ name, location, par, slope_value, course_value, created_by: userId }]);
+      if (error) {
+        console.error('Course creation error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Course created:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
+      };
+    }
+
+    // Route: PUT /api/courses/:id
+    if (path.startsWith('/api/courses/') && event.httpMethod === 'PUT') {
+      const courseId = path.split('/')[3];
+      console.log('Handling /api/courses/:id PUT request, courseId:', courseId);
+      const { name, location, par, slope_value, course_value } = JSON.parse(event.body || '{}');
+      if (!name || !location || !par || !slope_value || !course_value) {
+        console.log('Missing required fields');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, location, par, slope_value, and course_value are required' })
+        };
+      }
+      const { data, error } = await supabase
+        .from('courses')
+        .update({ name, location, par, slope_value, course_value })
+        .eq('course_id', courseId);
+      if (error) {
+        console.error('Course update error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Course updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ data: data[0] })
+      };
+    }
+
+    // Route: DELETE /api/courses/:id
+    if (path.startsWith('/api/courses/') && event.httpMethod === 'DELETE') {
+      const courseId = path.split('/')[3];
+      console.log('Handling /api/courses/:id DELETE request, courseId:', courseId);
+      const { error } = await supabase
+        .from('courses')
+        .delete()
+        .eq('course_id', courseId);
+      if (error) {
+        console.error('Course deletion error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Course deleted:', courseId);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Course deleted successfully' })
+      };
+    }
+
+    // Route: GET /api/profile
+    if (path === '/api/profile' && event.httpMethod === 'GET') {
+      console.log('Handling /api/profile GET request');
+      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
+      const userId = session?.user?.id;
+      if (!userId) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+        };
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      if (error) {
+        console.error('Profile retrieval error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data) {
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Profile not found' })
+        };
+      }
+      console.log('Profile retrieved:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          name: data.name || '',
+          email: session.user.email,
+          handicap: data.handicap || 0
+        })
+      };
+    }
+
+    // Route: PUT /api/profile
+    if (path === '/api/profile' && event.httpMethod === 'PUT') {
+      console.log('Handling /api/profile PUT request');
+      const { name, email, handicap } = JSON.parse(event.body || '{}');
+      if (!name || !email || handicap === undefined) {
+        console.log('Missing required fields');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, email, and handicap are required' })
+        };
+      }
+      const session = JSON.parse(event.headers['authorization']?.split(' ')[1] || '{}');
+      const userId = session?.user?.id;
+      if (!userId) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No user ID found in session' })
+        };
+      }
+      // Update user email in Supabase auth
+      const { error: authError } = await supabase.auth.updateUser({ email });
+      if (authError) {
+        console.error('Profile email update error:', authError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: authError.message })
+        };
+      }
+      // Update profile in profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({ user_id: userId, name, handicap }, { onConflict: 'user_id' });
+      if (error) {
+        console.error('Profile update error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Profile updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
       };
     }
 
     console.log('No matching route:', path, event.httpMethod);
     return {
       statusCode: 404,
-      body: JSON.stringify({ error: 'Not found' }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Not found' })
     };
   } catch (error) {
     console.error('Error in api:', error.message, error.stack);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Server error' }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Server error' })
     };
   }
 };
