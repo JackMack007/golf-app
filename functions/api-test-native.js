@@ -4,8 +4,9 @@ exports.handler = async function(event, context) {
   try {
     // Normalize path by removing Netlify function prefix and ensuring single leading slash
     let path = event.path
-      .replace(/^\/\.netlify\/functions\/api-test-native\/?/, '/')
-      .replace(/^\/api-test-native\/?/, '/')
+      .replace(/^\/\.netlify\/functions\/api-test-native\/?/, '/api/')
+      .replace(/^\/api-test-native\/?/, '/api/')
+      .replace(/^\/api\/api\/?/, '/api/') // Handle double /api/api/ from URL
       .replace(/^\/+/, '/'); // Ensure single leading slash
     console.log('Normalized path:', path);
     if (path === '/api/health' && event.httpMethod === 'GET') {
