@@ -1,7 +1,11 @@
 exports.handler = async function(event, context) {
   console.log('Initializing api-test-native');
+  console.log('Event path:', event.path, 'Method:', event.httpMethod);
   try {
-    if (event.path === '/api/health' && event.httpMethod === 'GET') {
+    // Normalize path to remove function name or leading segments
+    const path = event.path.replace(/^\/\.netlify\/functions\/api-test-native/, '').replace(/^\/api-test-native/, '');
+    console.log('Normalized path:', path);
+    if (path === '/api/health' && event.httpMethod === 'GET') {
       console.log('Handling /api/health request');
       return {
         statusCode: 200,
@@ -11,7 +15,7 @@ exports.handler = async function(event, context) {
         }
       };
     }
-    console.log('No matching route:', event.path, event.httpMethod);
+    console.log('No matching route:', path, event.httpMethod);
     return {
       statusCode: 404,
       body: JSON.stringify({ error: 'Not found' }),
