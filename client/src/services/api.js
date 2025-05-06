@@ -27,7 +27,7 @@ export const getCourses = () => api.get('/api/courses');
 export const updateCourse = (courseId, formData) => api.put(`/api/courses/${courseId}`, formData);
 export const createCourse = (formData) => api.post('/api/courses', formData);
 export const deleteCourse = (courseId) => api.delete(`/api/courses/${courseId}`);
-export const getProfile = (userId) => api.get(`/api/users/${userId}`);
+export const getProfile = () => api.get('/api/profile');
 export const updateProfile = (profileData) => api.put('/api/profile', profileData);
 export const updateScore = (scoreId, scoreData) => api.put(`/api/scores/${scoreId}`, scoreData);
 export const deleteScore = (scoreId) => api.delete(`/api/scores/${scoreId}`);

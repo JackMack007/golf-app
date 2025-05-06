@@ -13,12 +13,20 @@ function ProfilePage() {
         if (!session || !session.access_token) {
           throw new Error('No session found. Please log in.');
         }
-        // Assuming the userId is stored in the session (adjust based on your session structure)
-        const userId = session.user.id;
-        const response = await getProfile(userId);
+        const response = await getProfile();
         setProfile(response.data);
       } catch (err) {
-        setError(err.response?.data?.error || err.message);
+        if (err.response?.status === 404) {
+          // Profile not found, initialize with defaults
+          const session = JSON.parse(localStorage.getItem('session'));
+          setProfile({
+            name: '',
+            email: session.user.email,
+            handicap: 0
+          });
+        } else {
+          setError(err.response?.data?.error || err.message);
+        }
       }
     };
     fetchProfile();

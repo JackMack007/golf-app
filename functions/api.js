@@ -63,6 +63,19 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
+      // Create a default profile for the new user
+      const userId = data.user.id;
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({ user_id: userId, name: '', handicap: 0 });
+      if (profileError) {
+        console.error('Profile creation error:', profileError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to create user profile: ' + profileError.message })
+        };
+      }
       console.log('Signup successful:', data.user.id);
       return {
         statusCode: 200,
@@ -91,6 +104,27 @@ exports.handler = async function(event, context) {
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
         };
+      }
+      // Ensure a profile exists for the user
+      const userId = data.user.id;
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      if (profileError || !profileData) {
+        // Create a default profile if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({ user_id: userId, name: '', handicap: 0 });
+        if (insertError) {
+          console.error('Profile creation error on signin:', insertError.message);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Failed to create user profile: ' + insertError.message })
+          };
+        }
       }
       console.log('Signin successful:', data.user.id);
       return {
