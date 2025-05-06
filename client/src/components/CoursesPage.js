@@ -1,24 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getCourses, updateCourse, createCourse } from '../services/api';
 
-function CoursesPage() {
+const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    location: '',
-    par: 72,
-    slope_value: 113,
-    course_value: 72.5
-  });
   const [editCourseId, setEditCourseId] = useState(null);
+  const [formData, setFormData] = useState(new FormData());
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/courses');
-        setCourses(response.data);
+        const response = await getCourses();
+        setCourses(response.data.courses || []);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to fetch courses');
       }
@@ -26,211 +19,76 @@ function CoursesPage() {
     fetchCourses();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const handleUpdate = async () => {
+    if (!editCourseId) return;
     try {
-      const session = JSON.parse(localStorage.getItem('session'));
-      if (!session || !session.access_token) {
-        throw new Error('No session found. Please log in.');
-      }
-      let response;
-      if (editCourseId) {
-        // Update existing course
-        response = await axios.put(`http://localhost:5000/api/courses/${editCourseId}`, formData, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        });
-        setCourses(courses.map(course => course.course_id === editCourseId ? response.data.data : course));
-        setEditCourseId(null);
-        setSuccess('Course updated successfully!');
-      } else {
-        // Create new course
-        response = await axios.post('http://localhost:5000/api/courses', formData, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        });
-        setCourses([...courses, response.data]);
-        setSuccess('Course created successfully!');
-      }
-      setFormData({
-        name: '',
-        location: '',
-        par: 72,
-        slope_value: 113,
-        course_value: 72.5
-      });
+      const response = await updateCourse(editCourseId, formData);
+      setCourses(courses.map(course => course.id === editCourseId ? response.data : course));
+      setEditCourseId(null);
+      setFormData(new FormData());
+      setError(null);
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || 'Failed to update course');
     }
   };
 
-  const handleEdit = (course) => {
-    setFormData({
-      name: course.name,
-      location: course.location,
-      par: course.par,
-      slope_value: course.slope_value,
-      course_value: course.course_value
-    });
-    setEditCourseId(course.course_id);
-  };
-
-  const handleDelete = async (courseId) => {
-    setError(null);
-    setSuccess(null);
+  const handleCreate = async () => {
     try {
-      const session = JSON.parse(localStorage.getItem('session'));
-      if (!session || !session.access_token) {
-        throw new Error('No session found. Please log in.');
-      }
-      await axios.delete(`http://localhost:5000/api/courses/${courseId}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-      setCourses(courses.filter(course => course.course_id !== courseId));
-      setSuccess('Course deleted successfully!');
+      const response = await createCourse(formData);
+      setCourses([...courses, response.data]);
+      setFormData(new FormData());
+      setError(null);
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || 'Failed to create course');
     }
   };
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'par' || name === 'slope_value' ? parseInt(value) || 0 : name === 'course_value' ? parseFloat(value) || 0 : value
-    }));
+    formData.set(name, value);
+    setFormData(new FormData(formData));
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-2xl">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          {editCourseId ? 'Edit Golf Course' : 'Create Golf Course'}
-        </h2>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {success && <p className="text-green-500 mb-4">{success}</p>}
-        <form onSubmit={handleSubmit} className="mb-8">
-          <div className="mb-4">
-            <label className="block text-gray-700">Course Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
+    <div>
+      <h1>Courses</h1>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <h2>Course List</h2>
+      {courses.length > 0 ? (
+        courses.map(course => (
+          <div key={course.id}>
+            <p>{course.name}</p>
+            {editCourseId === course.id ? (
+              <>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Course Name"
+                  onChange={handleInputChange}
+                />
+                {/* Add other form fields as needed */}
+                <button onClick={handleUpdate}>Save</button>
+                <button onClick={() => setEditCourseId(null)}>Cancel</button>
+              </>
+            ) : (
+              <button onClick={() => setEditCourseId(course.id)}>Edit</button>
+            )}
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Location</label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Par</label>
-            <input
-              type="number"
-              name="par"
-              value={formData.par}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              min="0"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Slope Value</label>
-            <input
-              type="number"
-              name="slope_value"
-              value={formData.slope_value}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              min="0"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Course Value</label>
-            <input
-              type="number"
-              name="course_value"
-              value={formData.course_value}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-          >
-            {editCourseId ? 'Update Course' : 'Create Course'}
-          </button>
-          {editCourseId && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditCourseId(null);
-                setFormData({
-                  name: '',
-                  location: '',
-                  par: 72,
-                  slope_value: 113,
-                  course_value: 72.5
-                });
-              }}
-              className="w-full mt-2 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
-            >
-              Cancel Edit
-            </button>
-          )}
-        </form>
-        <h3 className="text-xl font-bold mb-4">All Courses</h3>
-        {courses.length === 0 ? (
-          <p className="text-gray-500">No courses available.</p>
-        ) : (
-          <ul className="space-y-4">
-            {courses.map((course) => (
-              <li key={course.course_id} className="border p-4 rounded flex justify-between items-center">
-                <div>
-                  <h4 className="text-lg font-semibold">{course.name}</h4>
-                  <p><strong>Location:</strong> {course.location}</p>
-                  <p><strong>Par:</strong> {course.par}</p>
-                  <p><strong>Slope Value:</strong> {course.slope_value}</p>
-                  <p><strong>Course Value:</strong> {course.course_value}</p>
-                  <p><strong>Created By:</strong> {course.created_by}</p>
-                  <p><strong>Created At:</strong> {new Date(course.created_at).toLocaleString()}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(course)}
-                    className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(course.course_id)}
-                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        ))
+      ) : (
+        <p>No courses available</p>
+      )}
+      <h2>Create Course</h2>
+      <input
+        type="text"
+        name="name"
+        placeholder="Course Name"
+        onChange={handleInputChange}
+      />
+      {/* Add other form fields as needed */}
+      <button onClick={handleCreate}>Create Course</button>
     </div>
   );
-}
+};
 
 export default CoursesPage;
