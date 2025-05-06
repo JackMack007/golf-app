@@ -434,8 +434,8 @@ exports.handler = async function(event, context) {
         };
       }
       const userId = sessionData.user.id;
-      // Update user email in Supabase auth
-      const { error: authError } = await supabase.auth.updateUser({ email });
+      // Update user email in Supabase auth using Admin API
+      const { error: authError } = await supabase.auth.admin.updateUserById(userId, { email });
       if (authError) {
         console.error('Profile email update error:', authError.message);
         return {
