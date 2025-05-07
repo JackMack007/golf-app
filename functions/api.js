@@ -305,13 +305,22 @@ exports.handler = async function(event, context) {
       const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('courses')
-        .insert([{ name, location, par, slope_value, course_value, created_by: userId }]);
+        .insert([{ name, location, par, slope_value, course_value, created_by: userId }])
+        .select();
       if (error) {
         console.error('Course creation error:', error.message);
         return {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Course creation returned no data');
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to retrieve created course' })
         };
       }
       console.log('Course created:', data);
@@ -338,13 +347,22 @@ exports.handler = async function(event, context) {
       const { data, error } = await supabase
         .from('courses')
         .update({ name, location, par, slope_value, course_value })
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .select();
       if (error) {
         console.error('Course update error:', error.message);
         return {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Course update returned no data');
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Course not found' })
         };
       }
       console.log('Course updated:', data);
