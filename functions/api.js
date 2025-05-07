@@ -585,6 +585,62 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: GET /api/tournaments
+    if (path === '/api/tournaments' && event.httpMethod === 'GET') {
+      console.log('Handling /api/tournaments request');
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      // Placeholder response for tournaments (to be implemented later)
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ tournaments: [], message: 'Tournaments feature coming soon' })
+      };
+    }
+
+    // Route: GET /api/leaderboards
+    if (path === '/api/leaderboards' && event.httpMethod === 'GET') {
+      console.log('Handling /api/leaderboards request');
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      // Placeholder response for leaderboards (to be implemented later)
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ leaderboards: [], message: 'Leaderboards feature coming soon' })
+      };
+    }
+
     // Route: GET /api/profile
     if (path === '/api/profile' && event.httpMethod === 'GET') {
       console.log('Handling /api/profile GET request');
