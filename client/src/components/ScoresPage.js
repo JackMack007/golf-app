@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCourses, getScores, submitScore, updateScore, deleteScore } from '../services/api';
 
+// Added comment to force Git to recognize a change - 2025-05-07
 function ScoresPage() {
   const [scores, setScores] = useState([]);
   const [courses, setCourses] = useState([]);
