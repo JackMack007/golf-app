@@ -48,6 +48,10 @@ function ScoresPage() {
       if (!session || !session.access_token) {
         throw new Error('No session found. Please log in.');
       }
+      if (!formData.course || !formData.score_value || !formData.date_played || !/^\d{4}-\d{2}-\d{2}$/.test(formData.date_played)) {
+        throw new Error('Course, score, and a valid date played (YYYY-MM-DD) are required');
+      }
+      console.log('Submitting formData:', formData);
       let response;
       if (editScoreId) {
         // Update existing score
@@ -78,10 +82,11 @@ function ScoresPage() {
   };
 
   const handleEdit = (score) => {
+    const datePlayed = score.date_played && /^\d{4}-\d{2}-\d{2}$/.test(score.date_played) ? score.date_played : new Date().toISOString().split('T')[0];
     setFormData({
-      course: score.course,
-      score_value: score.score_value,
-      date_played: score.date_played,
+      course: score.course_id || score.course || '',
+      score_value: score.score_value || 0,
+      date_played: datePlayed,
       notes: score.notes || ''
     });
     setEditScoreId(score.score_id);
@@ -207,7 +212,7 @@ function ScoresPage() {
         ) : (
           <ul className="space-y-4">
             {scores.map((score) => {
-              const course = courses.find(c => c.course_id === score.course);
+              const course = courses.find(c => c.course_id === (score.course_id || score.course));
               return (
                 <li key={score.score_id} className="border p-4 rounded flex justify-between items-center">
                   <div>
