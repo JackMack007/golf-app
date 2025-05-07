@@ -487,14 +487,7 @@ exports.handler = async function(event, context) {
     if (path === '/api/profile' && event.httpMethod === 'PUT') {
       console.log('Handling /api/profile PUT request');
       const { name, email, handicap } = JSON.parse(event.body || '{}');
-      if (!name || !email || handicap === undefined) {
-        console.log('Missing required fields');
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'name, email, and handicap are required' })
-        };
-      }
+      console.log('PUT /api/profile body:', { name, email, handicap });
       if (!token) {
         console.error('No authorization token provided');
         return {
@@ -513,9 +506,32 @@ exports.handler = async function(event, context) {
         };
       }
       const userId = sessionData.user.id;
+
+      // Fetch the current user data to fill in missing fields
+      const { data: currentUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .single();
+      if (fetchError || !currentUser) {
+        console.error('User fetch error:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+
+      // Use current values for any missing fields
+      const updatedData = {
+        name: name !== undefined && name !== '' ? name : currentUser.name,
+        email: email !== undefined && email !== '' ? email : currentUser.email,
+        handicap: handicap !== undefined ? parseFloat(handicap) : currentUser.handicap
+      };
+
       const { data, error } = await supabase
         .from('users')
-        .update({ name, email, handicap })
+        .update(updatedData)
         .eq('auth_user_id', userId)
         .select();
       if (error) {

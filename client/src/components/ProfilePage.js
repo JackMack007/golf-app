@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { getProfile, updateProfile } from '../services/api';
 
 function ProfilePage() {
-  const [profile, setProfile] = useState({ name: '', email: '', handicap: 0 });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    handicap: ''
+  });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -14,19 +18,13 @@ function ProfilePage() {
           throw new Error('No session found. Please log in.');
         }
         const response = await getProfile();
-        setProfile(response.data);
+        setFormData({
+          name: response.data.name || '',
+          email: response.data.email || '',
+          handicap: response.data.handicap || 0
+        });
       } catch (err) {
-        if (err.response?.status === 404) {
-          // Profile not found, initialize with defaults
-          const session = JSON.parse(localStorage.getItem('session'));
-          setProfile({
-            name: '',
-            email: session.user.email,
-            handicap: 0
-          });
-        } else {
-          setError(err.response?.data?.error || err.message);
-        }
+        setError(err.response?.data?.error || err.message);
       }
     };
     fetchProfile();
@@ -41,8 +39,13 @@ function ProfilePage() {
       if (!session || !session.access_token) {
         throw new Error('No session found. Please log in.');
       }
-      await updateProfile(profile);
+      const response = await updateProfile(formData.name, formData.email, parseFloat(formData.handicap));
       setSuccess('Profile updated successfully!');
+      setFormData({
+        name: response.data.name || '',
+        email: response.data.email || '',
+        handicap: response.data.handicap || 0
+      });
     } catch (err) {
       setError(err.response?.data?.error || err.message);
     }
@@ -50,16 +53,16 @@ function ProfilePage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProfile((prev) => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'handicap' ? parseInt(value) || 0 : value
+      [name]: value
     }));
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center">Your Profile</h2>
+    <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">Profile</h2>
         {error && <p className="text-red-500 mb-4">{error}</p>}
         {success && <p className="text-green-500 mb-4">{success}</p>}
         <form onSubmit={handleSubmit}>
@@ -68,7 +71,7 @@ function ProfilePage() {
             <input
               type="text"
               name="name"
-              value={profile.name}
+              value={formData.name}
               onChange={handleChange}
               className="w-full p-2 border rounded"
               required
@@ -79,7 +82,7 @@ function ProfilePage() {
             <input
               type="email"
               name="email"
-              value={profile.email}
+              value={formData.email}
               onChange={handleChange}
               className="w-full p-2 border rounded"
               required
@@ -89,11 +92,12 @@ function ProfilePage() {
             <label className="block text-gray-700">Handicap</label>
             <input
               type="number"
+              step="0.1"
               name="handicap"
-              value={profile.handicap}
+              value={formData.handicap}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              min="0"
+              required
             />
           </div>
           <button
