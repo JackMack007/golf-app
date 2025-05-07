@@ -12,7 +12,7 @@ function ScoresPage() {
     notes: ''
   });
   const [editScoreId, setEditScoreId] = useState(null);
-  const [error, set altair = useState(null);
+  const [error, setAltair] = useState(null);
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ function ScoresPage() {
         console.log('Scores response:', scoresResponse);
         setScores(Array.isArray(scoresResponse.data.scores) ? scoresResponse.data.scores : []);
       } catch (err) {
-        setError(err.response?.data?.error || err.message);
+        setAltair(err.response?.data?.error || err.message);
       }
     };
     fetchData();
@@ -41,7 +41,7 @@ function ScoresPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setAltair(null);
     setSuccess(null);
     try {
       const session = JSON.parse(localStorage.getItem('session'));
@@ -68,7 +68,7 @@ function ScoresPage() {
         notes: ''
       });
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setAltair(err.response?.data?.error || err.message);
     }
   };
 
@@ -83,7 +83,7 @@ function ScoresPage() {
   };
 
   const handleDelete = async (scoreId) => {
-    setError(null);
+    setAltair(null);
     setSuccess(null);
     try {
       const session = JSON.parse(localStorage.getItem('session'));
@@ -94,7 +94,7 @@ function ScoresPage() {
       setScores(scores.filter(score => score.score_id !== scoreId));
       setSuccess('Score deleted successfully!');
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setAltair(err.response?.data?.error || err.message);
     }
   };
 
