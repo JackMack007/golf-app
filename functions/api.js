@@ -169,7 +169,8 @@ exports.handler = async function(event, context) {
       }
       const { data, error } = await supabase
         .from('scores')
-        .insert([{ user_id: userId, score_value: score, course_id: course, date_played, notes }]);
+        .insert([{ user_id: userId, score_value: score, course_id: course, date_played, notes }])
+        .select();
       if (error) {
         console.error('Score submission error:', error.message);
         return {
@@ -233,7 +234,8 @@ exports.handler = async function(event, context) {
       const { data, error } = await supabase
         .from('scores')
         .update({ course_id: course, score_value, date_played, notes })
-        .eq('score_id', scoreId);
+        .eq('score_id', scoreId)
+        .select();
       if (error) {
         console.error('Score update error:', error.message);
         return {
