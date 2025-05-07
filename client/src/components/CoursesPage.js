@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getCourses, createCourse, updateCourse, deleteCourse } from '../services/api';
+import { getCourses, submitCourse, updateCourse, deleteCourse } from '../services/api';
 
 function CoursesPage() {
   const [courses, setCourses] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     location: '',
-    par: 72,
-    slope_value: 113,
-    course_value: 72.5
+    par: '',
+    slope_value: '',
+    course_value: ''
   });
   const [editCourseId, setEditCourseId] = useState(null);
   const [error, setError] = useState(null);
@@ -17,10 +17,14 @@ function CoursesPage() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        const session = JSON.parse(localStorage.getItem('session'));
+        if (!session || !session.access_token) {
+          throw new Error('No session found. Please log in.');
+        }
         const response = await getCourses();
         setCourses(response.data);
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to fetch courses');
+        setError(err.response?.data?.error || err.message);
       }
     };
     fetchCourses();
@@ -38,22 +42,34 @@ function CoursesPage() {
       let response;
       if (editCourseId) {
         // Update existing course
-        response = await updateCourse(editCourseId, formData);
+        response = await updateCourse(editCourseId, {
+          name: formData.name,
+          location: formData.location,
+          par: parseInt(formData.par),
+          slope_value: parseInt(formData.slope_value),
+          course_value: parseFloat(formData.course_value)
+        });
         setCourses(courses.map(course => course.course_id === editCourseId ? response.data.data : course));
         setEditCourseId(null);
         setSuccess('Course updated successfully!');
       } else {
         // Create new course
-        response = await createCourse(formData);
+        response = await submitCourse({
+          name: formData.name,
+          location: formData.location,
+          par: parseInt(formData.par),
+          slope_value: parseInt(formData.slope_value),
+          course_value: parseFloat(formData.course_value)
+        });
         setCourses([...courses, response.data]);
         setSuccess('Course created successfully!');
       }
       setFormData({
         name: '',
         location: '',
-        par: 72,
-        slope_value: 113,
-        course_value: 72.5
+        par: '',
+        slope_value: '',
+        course_value: ''
       });
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -91,7 +107,7 @@ function CoursesPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'par' || name === 'slope_value' ? parseInt(value) || 0 : name === 'course_value' ? parseFloat(value) || 0 : value
+      [name]: value
     }));
   };
 
@@ -99,7 +115,7 @@ function CoursesPage() {
     <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-2xl">
         <h2 className="text-2xl font-bold mb-6 text-center">
-          {editCourseId ? 'Edit Golf Course' : 'Create Golf Course'}
+          {editCourseId ? 'Edit Course' : 'Create Course'}
         </h2>
         {error && <p className="text-red-500 mb-4">{error}</p>}
         {success && <p className="text-green-500 mb-4">{success}</p>}
@@ -134,7 +150,6 @@ function CoursesPage() {
               value={formData.par}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              min="0"
               required
             />
           </div>
@@ -146,7 +161,6 @@ function CoursesPage() {
               value={formData.slope_value}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              min="0"
               required
             />
           </div>
@@ -154,12 +168,11 @@ function CoursesPage() {
             <label className="block text-gray-700">Course Value</label>
             <input
               type="number"
+              step="0.1"
               name="course_value"
               value={formData.course_value}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              step="0.1"
-              min="0"
               required
             />
           </div>
@@ -177,9 +190,9 @@ function CoursesPage() {
                 setFormData({
                   name: '',
                   location: '',
-                  par: 72,
-                  slope_value: 113,
-                  course_value: 72.5
+                  par: '',
+                  slope_value: '',
+                  course_value: ''
                 });
               }}
               className="w-full mt-2 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
@@ -188,7 +201,7 @@ function CoursesPage() {
             </button>
           )}
         </form>
-        <h3 className="text-xl font-bold mb-4">All Courses</h3>
+        <h3 className="text-xl font-bold mb-4">Courses</h3>
         {courses.length === 0 ? (
           <p className="text-gray-500">No courses available.</p>
         ) : (
@@ -201,8 +214,6 @@ function CoursesPage() {
                   <p><strong>Par:</strong> {course.par}</p>
                   <p><strong>Slope Value:</strong> {course.slope_value}</p>
                   <p><strong>Course Value:</strong> {course.course_value}</p>
-                  <p><strong>Created By:</strong> {course.created_by}</p>
-                  <p><strong>Created At:</strong> {new Date(course.created_at).toLocaleString()}</p>
                 </div>
                 <div className="flex space-x-2">
                   <button
