@@ -70,7 +70,7 @@ exports.handler = async function(event, context) {
       }
       // Create a record in the users table
       const userId = data.user.id;
-      const { error: userError } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
           user_id: userId,
@@ -78,8 +78,11 @@ exports.handler = async function(event, context) {
           name: name || '',
           email: email,
           handicap: 0,
-          created_at: new Date().toISOString()
-        });
+          created_at: new Date().toISOString(),
+          role: 'user' // Explicitly set role as 'user' for new signups
+        })
+        .select()
+        .single();
       if (userError) {
         console.error('User creation error:', userError.message);
         return {
@@ -92,7 +95,7 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: data.user })
+        body: JSON.stringify({ user: { ...data.user, role: userData.role } })
       };
     }
 
@@ -121,12 +124,12 @@ exports.handler = async function(event, context) {
       const userId = data.user.id;
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('user_id, auth_user_id, name, email, handicap, created_at, role')
         .eq('auth_user_id', userId)
         .single();
       if (userError || !userData) {
         // Create a default user record if it doesn't exist
-        const { error: insertError } = await supabase
+        const { data: newUserData, error: insertError } = await supabase
           .from('users')
           .insert({
             user_id: userId,
@@ -134,8 +137,11 @@ exports.handler = async function(event, context) {
             name: '',
             email: email,
             handicap: 0,
-            created_at: new Date().toISOString()
-          });
+            created_at: new Date().toISOString(),
+            role: 'user' // Explicitly set role as 'user' for new users
+          })
+          .select()
+          .single();
         if (insertError) {
           console.error('User creation error on signin:', insertError.message);
           return {
@@ -144,13 +150,20 @@ exports.handler = async function(event, context) {
             body: JSON.stringify({ error: 'Failed to create user: ' + insertError.message })
           };
         }
+        console.log('Signin successful:', data.user.id);
+        console.log('Session data:', data.session);
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ user: { ...data.user, role: newUserData.role }, session: data.session })
+        };
       }
       console.log('Signin successful:', data.user.id);
       console.log('Session data:', data.session);
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: data.user, session: data.session })
+        body: JSON.stringify({ user: { ...data.user, role: userData.role }, session: data.session })
       };
     }
 
@@ -478,7 +491,8 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({
           name: data.name || '',
           email: data.email,
-          handicap: data.handicap || 0
+          handicap: data.handicap || 0,
+          role: data.role || 'user'
         })
       };
     }
