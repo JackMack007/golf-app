@@ -12,7 +12,7 @@ function ScoresPage() {
     notes: ''
   });
   const [editScoreId, setEditScoreId] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, set altair = useState(null);
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
@@ -25,11 +25,13 @@ function ScoresPage() {
 
         // Fetch courses
         const coursesResponse = await getCourses();
+        console.log('Courses response:', coursesResponse);
         setCourses(Array.isArray(coursesResponse.data) ? coursesResponse.data : []);
 
         // Fetch scores
         const scoresResponse = await getScores();
-        setScores(scoresResponse.data);
+        console.log('Scores response:', scoresResponse);
+        setScores(Array.isArray(scoresResponse.data.scores) ? scoresResponse.data.scores : []);
       } catch (err) {
         setError(err.response?.data?.error || err.message);
       }
@@ -104,6 +106,18 @@ function ScoresPage() {
     }));
   };
 
+  const renderCourseOptions = () => {
+    console.log('Courses before map:', courses);
+    if (!Array.isArray(courses) || courses.length === 0) {
+      return null;
+    }
+    return courses.map(course => (
+      <option key={course.course_id} value={course.course_id}>
+        {course.name} ({course.location})
+      </option>
+    ));
+  };
+
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-2xl">
@@ -123,11 +137,7 @@ function ScoresPage() {
               required
             >
               <option value="">Select a course</option>
-              {Array.isArray(courses) && courses.map(course => (
-                <option key={course.course_id} value={course.course_id}>
-                  {course.name} ({course.location})
-                </option>
-              ))}
+              {renderCourseOptions()}
             </select>
           </div>
           <div className="mb-4">
