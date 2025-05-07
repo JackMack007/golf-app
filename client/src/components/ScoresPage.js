@@ -24,7 +24,7 @@ function ScoresPage() {
 
         // Fetch courses
         const coursesResponse = await getCourses();
-        setCourses(coursesResponse.data);
+        setCourses(Array.isArray(coursesResponse.data) ? coursesResponse.data : []);
 
         // Fetch scores
         const scoresResponse = await getScores();
@@ -122,7 +122,7 @@ function ScoresPage() {
               required
             >
               <option value="">Select a course</option>
-              {courses.map(course => (
+              {Array.isArray(courses) && courses.map(course => (
                 <option key={course.course_id} value={course.course_id}>
                   {course.name} ({course.location})
                 </option>
