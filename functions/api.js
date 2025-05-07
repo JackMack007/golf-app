@@ -448,11 +448,12 @@ exports.handler = async function(event, context) {
         };
       }
       const userId = sessionData.user.id;
-      // Update user record in users table
+      // Update user record in users table and fetch the updated row
       const { data, error } = await supabase
         .from('users')
         .update({ name, email, handicap })
-        .eq('auth_user_id', userId);
+        .eq('auth_user_id', userId)
+        .select();
       if (error) {
         console.error('User update error:', error.message);
         return {
