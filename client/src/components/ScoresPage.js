@@ -72,7 +72,7 @@ function ScoresPage() {
           date_played: formData.date_played,
           notes: formData.notes
         });
-        setScores([...scores, response.data]);
+        setScores([...scores, response.data.score]);
         setSuccess('Score created successfully!');
       }
       setFormData({
