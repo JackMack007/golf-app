@@ -68,7 +68,7 @@ exports.handler = async function(event, context) {
       const { error: userError } = await supabase
         .from('users')
         .insert({
-          userid: userId, // Use the auth.users.id as the userid
+          user_id: userId, // Correct column name: user_id
           auth_user_id: userId,
           name: name || '',
           email: email,
@@ -124,7 +124,7 @@ exports.handler = async function(event, context) {
         const { error: insertError } = await supabase
           .from('users')
           .insert({
-            userid: userId,
+            user_id: userId, // Correct column name: user_id
             auth_user_id: userId,
             name: '',
             email: email,
