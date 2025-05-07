@@ -11,6 +11,27 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400'
 };
 
+// Helper function to check the user's role
+const checkUserRole = async (token) => {
+  if (!token) {
+    throw new Error('No authorization token provided');
+  }
+  const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+  if (sessionError || !sessionData?.user) {
+    throw new Error('Invalid session token');
+  }
+  const userId = sessionData.user.id;
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('user_role')
+    .eq('auth_user_id', userId)
+    .single();
+  if (userError || !userData) {
+    throw new Error('User not found');
+  }
+  return userData.user_role;
+};
+
 exports.handler = async function(event, context) {
   console.log('Initializing api');
   console.log('Raw event path:', event.path, 'Method:', event.httpMethod);
@@ -357,6 +378,26 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'Unauthorized: No token provided' })
         };
       }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
       const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
       if (sessionError || !sessionData?.user) {
         console.error('Session error:', sessionError?.message);
@@ -408,6 +449,34 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'name, location, par, slope_value, and course_value are required' })
         };
       }
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
       const { data, error } = await supabase
         .from('courses')
         .update({ name, location, par, slope_value, course_value })
@@ -453,7 +522,7 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      console.log('Course deleted:', scoreId);
+      console.log('Course deleted:', courseId);
       return {
         statusCode: 200,
         headers: corsHeaders,
