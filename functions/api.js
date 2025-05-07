@@ -63,17 +63,24 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      // Create a default profile for the new user
+      // Create a record in the users table
       const userId = data.user.id;
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({ user_id: userId, name: name || '', handicap: 0 });
-      if (profileError) {
-        console.error('Profile creation error:', profileError.message);
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          userid: userId, // Use the auth.users.id as the userid
+          auth_user_id: userId,
+          name: name || '',
+          email: email,
+          handicap: 0,
+          created_at: new Date().toISOString()
+        });
+      if (userError) {
+        console.error('User creation error:', userError.message);
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Failed to create user profile: ' + profileError.message })
+          body: JSON.stringify({ error: 'Failed to create user: ' + userError.message })
         };
       }
       console.log('Signup successful:', data.user.id);
@@ -105,24 +112,31 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      // Ensure a profile exists for the user
+      // Ensure a record exists in the users table
       const userId = data.user.id;
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+      const { data: userData, error: userError } = await supabase
+        .from('users')
         .select('*')
-        .eq('user_id', userId)
+        .eq('auth_user_id', userId)
         .single();
-      if (profileError || !profileData) {
-        // Create a default profile if it doesn't exist
+      if (userError || !userData) {
+        // Create a default user record if it doesn't exist
         const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({ user_id: userId, name: '', handicap: 0 });
+          .from('users')
+          .insert({
+            userid: userId,
+            auth_user_id: userId,
+            name: '',
+            email: email,
+            handicap: 0,
+            created_at: new Date().toISOString()
+          });
         if (insertError) {
-          console.error('Profile creation error on signin:', insertError.message);
+          console.error('User creation error on signin:', insertError.message);
           return {
             statusCode: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Failed to create user profile: ' + insertError.message })
+            body: JSON.stringify({ error: 'Failed to create user: ' + insertError.message })
           };
         }
       }
@@ -380,12 +394,12 @@ exports.handler = async function(event, context) {
       }
       const userId = sessionData.user.id;
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
-        .eq('user_id', userId)
+        .eq('auth_user_id', userId)
         .single();
       if (error) {
-        console.error('Profile retrieval error:', error.message);
+        console.error('User retrieval error:', error.message);
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -396,16 +410,16 @@ exports.handler = async function(event, context) {
         return {
           statusCode: 404,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Profile not found' })
+          body: JSON.stringify({ error: 'User not found' })
         };
       }
-      console.log('Profile retrieved:', data);
+      console.log('User retrieved:', data);
       return {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify({
           name: data.name || '',
-          email: sessionData.user.email,
+          email: data.email,
           handicap: data.handicap || 0
         })
       };
@@ -434,29 +448,20 @@ exports.handler = async function(event, context) {
         };
       }
       const userId = sessionData.user.id;
-      // Update user email in Supabase auth using Admin API
-      const { error: authError } = await supabase.auth.admin.updateUserById(userId, { email });
-      if (authError) {
-        console.error('Profile email update error:', authError.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: authError.message })
-        };
-      }
-      // Update profile in profiles table
+      // Update user record in users table
       const { data, error } = await supabase
-        .from('profiles')
-        .upsert({ user_id: userId, name, handicap }, { onConflict: 'user_id' });
+        .from('users')
+        .update({ name, email, handicap })
+        .eq('auth_user_id', userId);
       if (error) {
-        console.error('Profile update error:', error.message);
+        console.error('User update error:', error.message);
         return {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
         };
       }
-      console.log('Profile updated:', data);
+      console.log('User updated:', data);
       return {
         statusCode: 200,
         headers: corsHeaders,
