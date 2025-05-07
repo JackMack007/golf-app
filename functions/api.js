@@ -510,6 +510,61 @@ exports.handler = async function(event, context) {
     if (path.startsWith('/api/courses/') && event.httpMethod === 'DELETE') {
       const courseId = path.split('/')[3];
       console.log('Handling /api/courses/:id DELETE request, courseId:', courseId);
+
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized for deletion:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Only admins can delete courses' })
+        };
+      }
+
+      // Check for associated scores
+      const { data: associatedScores, error: scoreError } = await supabase
+        .from('scores')
+        .select('score_id')
+        .eq('course_id', courseId);
+      if (scoreError) {
+        console.error('Error checking associated scores:', scoreError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: scoreError.message })
+        };
+      }
+      if (associatedScores && associatedScores.length > 0) {
+        console.log('Cannot delete course with associated scores:', associatedScores.length);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Cannot delete course with associated scores' })
+        };
+      }
+
+      // Proceed with deletion for admin
       const { error } = await supabase
         .from('courses')
         .delete()
