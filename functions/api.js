@@ -14,6 +14,7 @@ const corsHeaders = {
 exports.handler = async function(event, context) {
   console.log('Initializing api');
   console.log('Raw event path:', event.path, 'Method:', event.httpMethod);
+  console.log('Headers:', event.headers);
 
   // Handle OPTIONS preflight request
   if (event.httpMethod === 'OPTIONS') {
@@ -32,19 +33,9 @@ exports.handler = async function(event, context) {
       .replace(/^\/+/, '/');
     console.log('Normalized path:', path);
 
-    // Extract token and set session for RLS
+    // Extract token for authentication
     const token = event.headers['authorization']?.split(' ')[1];
-    if (token) {
-      const { error: sessionError } = await supabase.auth.setSession(token);
-      if (sessionError) {
-        console.error('Session set error:', sessionError.message);
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-        };
-      }
-    }
+    console.log('Authorization token:', token);
 
     // Route: GET /api/health
     if (path === '/api/health' && event.httpMethod === 'GET') {
@@ -155,6 +146,7 @@ exports.handler = async function(event, context) {
         }
       }
       console.log('Signin successful:', data.user.id);
+      console.log('Session data:', data.session);
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -306,15 +298,24 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'name, location, par, slope_value, and course_value are required' })
         };
       }
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-      if (!userId) {
-        console.error('No authenticated user found');
+      if (!token) {
+        console.error('No authorization token provided');
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No authenticated user' })
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
         };
       }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('courses')
         .insert([{ name, location, par, slope_value, course_value, created_by: userId }])
@@ -412,15 +413,24 @@ exports.handler = async function(event, context) {
     // Route: GET /api/profile
     if (path === '/api/profile' && event.httpMethod === 'GET') {
       console.log('Handling /api/profile GET request');
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-      if (!userId) {
-        console.error('No authenticated user found');
+      if (!token) {
+        console.error('No authorization token provided');
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No authenticated user' })
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
         };
       }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -465,15 +475,24 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'name, email, and handicap are required' })
         };
       }
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-      if (!userId) {
-        console.error('No authenticated user found');
+      if (!token) {
+        console.error('No authorization token provided');
         return {
           statusCode: 401,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No authenticated user' })
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
         };
       }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('users')
         .update({ name, email, handicap })
