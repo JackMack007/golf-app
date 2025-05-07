@@ -68,7 +68,7 @@ exports.handler = async function(event, context) {
       const { error: userError } = await supabase
         .from('users')
         .insert({
-          user_id: userId, // Correct column name: user_id
+          user_id: userId,
           auth_user_id: userId,
           name: name || '',
           email: email,
@@ -124,7 +124,7 @@ exports.handler = async function(event, context) {
         const { error: insertError } = await supabase
           .from('users')
           .insert({
-            user_id: userId, // Correct column name: user_id
+            user_id: userId,
             auth_user_id: userId,
             name: '',
             email: email,
@@ -459,6 +459,14 @@ exports.handler = async function(event, context) {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('User update returned no data');
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
         };
       }
       console.log('User updated:', data);
