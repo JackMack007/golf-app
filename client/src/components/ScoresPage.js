@@ -6,7 +6,7 @@ function ScoresPage() {
   const [scores, setScores] = useState([]);
   const [courses, setCourses] = useState([]);
   const [formData, setFormData] = useState({
-    course_id: '',
+    course: '',
     score_value: 0,
     date_played: '',
     notes: ''
@@ -51,18 +51,23 @@ function ScoresPage() {
       let response;
       if (editScoreId) {
         // Update existing score
-        response = await updateScore(editScoreId, formData);
+        response = await updateScore(editScoreId, {
+          course: formData.course,
+          score_value: formData.score_value,
+          date_played: formData.date_played,
+          notes: formData.notes
+        });
         setScores(scores.map(score => score.score_id === editScoreId ? response.data.data : score));
         setEditScoreId(null);
         setSuccess('Score updated successfully!');
       } else {
         // Create new score
-        response = await submitScore(session.user.id, parseInt(formData.score_value), formData.course_id);
+        response = await submitScore(session.user.id, parseInt(formData.score_value), formData.course);
         setScores([...scores, response.data]);
         setSuccess('Score created successfully!');
       }
       setFormData({
-        course_id: '',
+        course: '',
         score_value: 0,
         date_played: '',
         notes: ''
@@ -74,7 +79,7 @@ function ScoresPage() {
 
   const handleEdit = (score) => {
     setFormData({
-      course_id: score.course_id,
+      course: score.course,
       score_value: score.score_value,
       date_played: score.date_played,
       notes: score.notes || ''
@@ -130,8 +135,8 @@ function ScoresPage() {
           <div className="mb-4">
             <label className="block text-gray-700">Course</label>
             <select
-              name="course_id"
-              value={formData.course_id}
+              name="course"
+              value={formData.course}
               onChange={handleChange}
               className="w-full p-2 border rounded"
               required
@@ -184,7 +189,7 @@ function ScoresPage() {
               onClick={() => {
                 setEditScoreId(null);
                 setFormData({
-                  course_id: '',
+                  course: '',
                   score_value: 0,
                   date_played: '',
                   notes: ''
@@ -202,7 +207,7 @@ function ScoresPage() {
         ) : (
           <ul className="space-y-4">
             {scores.map((score) => {
-              const course = courses.find(c => c.course_id === score.course_id);
+              const course = courses.find(c => c.course_id === score.course);
               return (
                 <li key={score.score_id} className="border p-4 rounded flex justify-between items-center">
                   <div>

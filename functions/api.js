@@ -211,18 +211,18 @@ exports.handler = async function(event, context) {
     if (path.startsWith('/api/scores/') && event.httpMethod === 'PUT') {
       const scoreId = path.split('/')[3];
       console.log('Handling /api/scores/:id PUT request, scoreId:', scoreId);
-      const { course_id, score_value, date_played, notes } = JSON.parse(event.body || '{}');
-      if (!course_id || !score_value || !date_played) {
-        console.log('Missing course_id, score_value, or date_played');
+      const { course, score_value, date_played, notes } = JSON.parse(event.body || '{}');
+      if (!course || !score_value || !date_played) {
+        console.log('Missing course, score_value, or date_played');
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'course_id, score_value, and date_played are required' })
+          body: JSON.stringify({ error: 'course, score_value, and date_played are required' })
         };
       }
       const { data, error } = await supabase
         .from('scores')
-        .update({ course_id, score: score_value, date_played, notes })
+        .update({ course, score: score_value, date_played, notes })
         .eq('score_id', scoreId);
       if (error) {
         console.error('Score update error:', error.message);
