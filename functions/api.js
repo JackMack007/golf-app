@@ -158,12 +158,13 @@ exports.handler = async function(event, context) {
     if (path === '/api/scores' && event.httpMethod === 'POST') {
       console.log('Handling /api/scores request');
       const { userId, score, course, date_played, notes } = JSON.parse(event.body || '{}');
-      if (!userId || !score || !course) {
-        console.log('Missing userId, score, or course');
+      console.log('POST /api/scores body:', { userId, score, course, date_played, notes });
+      if (!userId || !score || !course || !date_played || !/^\d{4}-\d{2}-\d{2}$/.test(date_played)) {
+        console.log('Missing or invalid userId, score, course, or date_played');
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'userId, score, and course are required' })
+          body: JSON.stringify({ error: 'userId, score, course, and a valid date_played (YYYY-MM-DD) are required' })
         };
       }
       const { data, error } = await supabase
@@ -212,12 +213,13 @@ exports.handler = async function(event, context) {
       const scoreId = path.split('/')[3];
       console.log('Handling /api/scores/:id PUT request, scoreId:', scoreId);
       const { course, score_value, date_played, notes } = JSON.parse(event.body || '{}');
-      if (!course || !score_value || !date_played) {
-        console.log('Missing course, score_value, or date_played');
+      console.log('PUT /api/scores/:id body:', { course, score_value, date_played, notes });
+      if (!course || !score_value || !date_played || !/^\d{4}-\d{2}-\d{2}$/.test(date_played)) {
+        console.log('Missing or invalid course, score_value, or date_played');
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'course, score_value, and date_played are required' })
+          body: JSON.stringify({ error: 'course, score_value, and a valid date_played (YYYY-MM-DD) are required' })
         };
       }
       const { data, error } = await supabase
@@ -402,7 +404,7 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      console.log('Course deleted:', courseId);
+      console.log('Course deleted:', scoreId);
       return {
         statusCode: 200,
         headers: corsHeaders,

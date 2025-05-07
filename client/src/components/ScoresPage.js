@@ -66,7 +66,12 @@ function ScoresPage() {
         setSuccess('Score updated successfully!');
       } else {
         // Create new score
-        response = await submitScore(session.user.id, parseInt(formData.score_value), formData.course);
+        response = await submitScore(session.user.id, {
+          score: parseInt(formData.score_value),
+          course: formData.course,
+          date_played: formData.date_played,
+          notes: formData.notes
+        });
         setScores([...scores, response.data]);
         setSuccess('Score created successfully!');
       }
