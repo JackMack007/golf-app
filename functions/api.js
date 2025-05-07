@@ -178,6 +178,14 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
+      if (!data || data.length === 0) {
+        console.error('Score insertion returned no data');
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to retrieve inserted score' })
+        };
+      }
       console.log('Score submitted:', data);
       return {
         statusCode: 200,
@@ -232,6 +240,14 @@ exports.handler = async function(event, context) {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Score update returned no data');
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Score not found' })
         };
       }
       console.log('Score updated:', data);

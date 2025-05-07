@@ -51,10 +51,10 @@ function ScoresPage() {
       if (!formData.course || !formData.score_value || !formData.date_played || !/^\d{4}-\d{2}-\d{2}$/.test(formData.date_played)) {
         throw new Error('Course, score, and a valid date played (YYYY-MM-DD) are required');
       }
-      console.log('Submitting formData:', formData);
+      console.log('Submitting formData:', formData, 'editScoreId:', editScoreId);
       let response;
       if (editScoreId) {
-        // Update existing score
+        console.log('Updating score with ID:', editScoreId);
         response = await updateScore(editScoreId, {
           course: formData.course,
           score_value: formData.score_value,
@@ -65,7 +65,7 @@ function ScoresPage() {
         setEditScoreId(null);
         setSuccess('Score updated successfully!');
       } else {
-        // Create new score
+        console.log('Creating new score for user:', session.user.id);
         response = await submitScore(session.user.id, {
           score: parseInt(formData.score_value),
           course: formData.course,
