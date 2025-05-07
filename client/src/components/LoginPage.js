@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { signup, signin } from '../services/api';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { signin } from '../services/api';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -14,45 +12,34 @@ function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      if (isSignUp) {
-        const { data } = await signup(email, password, name);
-        alert('Sign-up successful! Please log in.');
-        setIsSignUp(false);
-      } else {
-        const { data } = await signin(email, password);
-        localStorage.setItem('session', JSON.stringify(data.session));
-        alert('Login successful!');
-        navigate('/profile');
-      }
+      const response = await signin(email, password);
+      // Construct a simplified session object with the correct role
+      const sessionData = {
+        user: {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          role: response.data.user.role // Use the role from our user object
+        },
+        access_token: response.data.session.access_token,
+        expires_at: response.data.session.expires_at,
+        expires_in: response.data.session.expires_in,
+        refresh_token: response.data.session.refresh_token,
+        token_type: response.data.session.token_type
+      };
+      localStorage.setItem('session', JSON.stringify(sessionData));
+      alert('Login successful!');
+      navigate('/profile');
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred');
+      setError(err.response?.data?.error || err.message);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('session');
-    alert('Logged out successfully!');
-  };
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          {isSignUp ? 'Sign Up' : 'Login'}
-        </h2>
+    <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
         <form onSubmit={handleSubmit}>
-          {isSignUp && (
-            <div className="mb-4">
-              <label className="block text-gray-700">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-          )}
           <div className="mb-4">
             <label className="block text-gray-700">Email</label>
             <input
@@ -73,45 +60,13 @@ function LoginPage() {
               required
             />
           </div>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
           <button
             type="submit"
             className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
           >
-            {isSignUp ? 'Sign Up' : 'Login'}
+            Login
           </button>
         </form>
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="w-full mt-4 text-blue-500 hover:underline"
-        >
-          {isSignUp ? 'Switch to Login' : 'Switch to Sign Up'}
-        </button>
-        {!isSignUp && (
-          <>
-            <button
-              onClick={handleLogout}
-              className="w-full mt-4 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
-            >
-              Logout
-            </button>
-            <div className="mt-4 text-center">
-              <Link to="/profile" className="text-blue-500 hover:underline">
-                Go to Profile
-              </Link>
-            </div>
-            <div className="mt-2 text-center">
-              <Link to="/courses" className="text-blue-500 hover:underline">
-                Go to Courses
-              </Link>
-            </div>
-            <div className="mt-2 text-center">
-              <Link to="/scores" className="text-blue-500 hover:underline">
-                Go to Scores
-              </Link>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
