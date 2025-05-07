@@ -79,7 +79,7 @@ exports.handler = async function(event, context) {
           email: email,
           handicap: 0,
           created_at: new Date().toISOString(),
-          role: 'user' // Explicitly set role as 'user' for new signups
+          user_role: 'user' // Explicitly set user_role as 'user' for new signups
         })
         .select()
         .single();
@@ -95,7 +95,7 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: { ...data.user, role: userData.role } })
+        body: JSON.stringify({ user: { ...data.user, role: userData.user_role } })
       };
     }
 
@@ -124,7 +124,7 @@ exports.handler = async function(event, context) {
       const userId = data.user.id;
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('user_id, auth_user_id, name, email, handicap, created_at, role')
+        .select('user_id, auth_user_id, name, email, handicap, created_at, user_role')
         .eq('auth_user_id', userId)
         .single();
       if (userError || !userData) {
@@ -138,7 +138,7 @@ exports.handler = async function(event, context) {
             email: email,
             handicap: 0,
             created_at: new Date().toISOString(),
-            role: 'user' // Explicitly set role as 'user' for new users
+            user_role: 'user' // Explicitly set user_role as 'user' for new users
           })
           .select()
           .single();
@@ -155,7 +155,7 @@ exports.handler = async function(event, context) {
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ user: { ...data.user, role: newUserData.role }, session: data.session })
+          body: JSON.stringify({ user: { ...data.user, role: newUserData.user_role }, session: data.session })
         };
       }
       console.log('Signin successful:', data.user.id);
@@ -163,7 +163,7 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: { ...data.user, role: userData.role }, session: data.session })
+        body: JSON.stringify({ user: { ...data.user, role: userData.user_role }, session: data.session })
       };
     }
 
@@ -466,7 +466,7 @@ exports.handler = async function(event, context) {
       const userId = sessionData.user.id;
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('name, email, handicap, user_role')
         .eq('auth_user_id', userId)
         .single();
       if (error) {
@@ -492,7 +492,7 @@ exports.handler = async function(event, context) {
           name: data.name || '',
           email: data.email,
           handicap: data.handicap || 0,
-          role: data.role || 'user'
+          role: data.user_role || 'user'
         })
       };
     }
@@ -524,7 +524,7 @@ exports.handler = async function(event, context) {
       // Fetch the current user data to fill in missing fields
       const { data: currentUser, error: fetchError } = await supabase
         .from('users')
-        .select('*')
+        .select('name, email, handicap, user_role')
         .eq('auth_user_id', userId)
         .single();
       if (fetchError || !currentUser) {
