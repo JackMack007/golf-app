@@ -92,10 +92,16 @@ exports.handler = async function(event, context) {
         };
       }
       console.log('Signup successful:', data.user.id);
+      // Construct the user object explicitly to avoid Supabase Auth role conflict
+      const userResponse = {
+        id: data.user.id,
+        email: data.user.email,
+        role: userData.user_role
+      };
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: { ...data.user, role: userData.user_role } })
+        body: JSON.stringify({ user: userResponse })
       };
     }
 
@@ -152,18 +158,30 @@ exports.handler = async function(event, context) {
         }
         console.log('Signin successful:', data.user.id);
         console.log('Session data:', data.session);
+        // Construct the user object explicitly to avoid Supabase Auth role conflict
+        const userResponse = {
+          id: data.user.id,
+          email: data.user.email,
+          role: newUserData.user_role
+        };
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ user: { ...data.user, role: newUserData.user_role }, session: data.session })
+          body: JSON.stringify({ user: userResponse, session: data.session })
         };
       }
       console.log('Signin successful:', data.user.id);
       console.log('Session data:', data.session);
+      // Construct the user object explicitly to avoid Supabase Auth role conflict
+      const userResponse = {
+        id: data.user.id,
+        email: data.user.email,
+        role: userData.user_role
+      };
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ user: { ...data.user, role: userData.user_role }, session: data.session })
+        body: JSON.stringify({ user: userResponse, session: data.session })
       };
     }
 
