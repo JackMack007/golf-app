@@ -1,14 +1,12 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserContext } from '../context/UserContext';
 
 function NavBar() {
-  const { user, setUser } = useContext(UserContext);
   const navigate = useNavigate();
+  const session = JSON.parse(localStorage.getItem('session'));
 
   const handleLogout = () => {
     localStorage.removeItem('session');
-    setUser(null);
     navigate('/');
   };
 
@@ -25,16 +23,11 @@ function NavBar() {
           <Link to="/scores" className="text-white hover:text-blue-200">
             Scores
           </Link>
-          {user ? (
+          {session ? (
             <>
               <Link to="/profile" className="text-white hover:text-blue-200">
                 Profile
               </Link>
-              {user.role === 'admin' && (
-                <Link to="/admin/users" className="text-white hover:text-blue-200">
-                  Admin: Users
-                </Link>
-              )}
               <button
                 onClick={handleLogout}
                 className="text-white hover:text-blue-200"

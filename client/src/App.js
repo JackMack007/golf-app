@@ -1,28 +1,32 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { UserProvider } from './context/UserContext';
 import NavBar from './components/NavBar';
-import LoginPage from './components/LoginPage';
-import SignupPage from './components/SignupPage';
-import ProfilePage from './components/ProfilePage';
-import CoursesPage from './components/CoursesPage';
-import ScoresPage from './components/ScoresPage';
+import Profile from './components/Profile'; // Assumed component
+import Login from './components/Login'; // Assumed component
+import AdminUsers from './components/AdminUsers';
+import AdminUserScores from './components/AdminUserScores';
 
 function App() {
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <NavBar />
-        <main className="flex-grow">
+    <BrowserRouter>
+      <UserProvider>
+        <div className="min-h-screen bg-gray-100">
+          <NavBar />
           <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/courses" element={<CoursesPage />} />
-            <Route path="/scores" element={<ScoresPage />} />
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            {/* Add routes for existing pages */}
+            <Route path="/courses" element={<div>Courses Page (Placeholder)</div>} />
+            <Route path="/scores" element={<div>Scores Page (Placeholder)</div>} />
+            <Route path="/signup" element={<div>Sign Up Page (Placeholder)</div>} />
           </Routes>
-        </main>
-      </div>
-    </Router>
+        </div>
+      </UserProvider>
+    </BrowserRouter>
   );
 }
 
