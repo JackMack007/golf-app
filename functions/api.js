@@ -23,18 +23,12 @@ const checkUserRole = async (token) => {
   const userId = sessionData.user.id;
   console.log('checkUserRole - Retrieved userId from token:', userId);
 
-  // Set the auth context to the user's token to satisfy RLS
-  await supabase.auth.setAuth(token);
-
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('user_role')
     .eq('auth_user_id', userId)
     .single();
   console.log('checkUserRole - Query result:', { userData, userError });
-
-  // Reset auth context to Service Role Key
-  await supabase.auth.setAuth(process.env.SUPABASE_KEY);
 
   if (userError || !userData) {
     throw new Error('User not found: ' + (userError?.message || 'No data returned'));
