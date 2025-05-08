@@ -21,13 +21,23 @@ const checkUserRole = async (token) => {
     throw new Error('Invalid session token');
   }
   const userId = sessionData.user.id;
+  console.log('checkUserRole - Retrieved userId from token:', userId);
+
+  // Set the auth context to the user's token to satisfy RLS
+  await supabase.auth.setAuth(token);
+
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('user_role')
     .eq('auth_user_id', userId)
     .single();
+  console.log('checkUserRole - Query result:', { userData, userError });
+
+  // Reset auth context to Service Role Key
+  await supabase.auth.setAuth(process.env.SUPABASE_KEY);
+
   if (userError || !userData) {
-    throw new Error('User not found');
+    throw new Error('User not found: ' + (userError?.message || 'No data returned'));
   }
   return userData.user_role;
 };
@@ -275,6 +285,8 @@ exports.handler = async function(event, context) {
       console.log('Handling /api/scores/:id PUT request, scoreId:', scoreId);
       const { course, score_value, date_played, notes } = JSON.parse(event.body || '{}');
       console.log('PUT /api/scores/:id body:', { course, score_value, date_played, notes });
+
+      // Validate request body
       if (!course || !score_value || !date_played || !/^\d{4}-\d{2}-\d{2}$/.test(date_played)) {
         console.log('Missing or invalid course, score_value, or date_played');
         return {
@@ -283,11 +295,97 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'course, score_value, and a valid date_played (YYYY-MM-DD) are required' })
         };
       }
+
+      // Check for authentication token
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Get the authenticated user's role and ID
+      let userRole;
+      let userId;
+      try {
+        userRole = await checkUserRole(token);
+        console.log('User role retrieved:', userRole);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+        if (sessionError || !sessionData?.user) {
+          console.error('Session error:', sessionError?.message);
+          return {
+            statusCode: 401,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+          };
+        }
+        userId = sessionData.user.id;
+        console.log('Authenticated userId:', userId);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      // If the user is not an admin, check if they own the score
+      let scoreData;
+      if (userRole !== 'admin') {
+        console.log('Checking score ownership for user:', userId);
+        const { data, error: scoreError } = await supabase
+          .from('scores')
+          .select('user_id')
+          .eq('score_id', scoreId)
+          .single();
+        if (scoreError || !data) {
+          console.error('Score not found during ownership check:', scoreError?.message);
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Score not found' })
+          };
+        }
+        console.log('Score ownership check - Score user_id:', data.user_id);
+        if (data.user_id !== userId) {
+          console.log('User not authorized to edit this score:', { userId, scoreUserId: data.user_id });
+          return {
+            statusCode: 403,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Forbidden: You can only edit your own scores' })
+          };
+        }
+        scoreData = data;
+      } else {
+        // For admins, fetch the score to confirm it exists
+        const { data, error: scoreError } = await supabase
+          .from('scores')
+          .select('user_id')
+          .eq('score_id', scoreId)
+          .single();
+        if (scoreError || !data) {
+          console.error('Score not found for admin:', scoreError?.message);
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Score not found' })
+          };
+        }
+        scoreData = data;
+      }
+
+      // Proceed with the update
+      console.log('Updating score for user:', userId, 'with role:', userRole);
       const { data, error } = await supabase
         .from('scores')
         .update({ course_id: course, score_value, date_played, notes })
         .eq('score_id', scoreId)
         .select();
+      console.log('Update query result:', { data, error });
+
       if (error) {
         console.error('Score update error:', error.message);
         return {
@@ -439,7 +537,7 @@ exports.handler = async function(event, context) {
     // Route: PUT /api/courses/:id
     if (path.startsWith('/api/courses/') && event.httpMethod === 'PUT') {
       const courseId = path.split('/')[3];
-      console.log('Handling /api/courses/:id PUT request, courseId:', courseId);
+      console.log('Handling /api/courses/:id PUT request, scoreId:', courseId);
       const { name, location, par, slope_value, course_value } = JSON.parse(event.body || '{}');
       if (!name || !location || !par || !slope_value || !course_value) {
         console.log('Missing required fields');
@@ -509,7 +607,7 @@ exports.handler = async function(event, context) {
     // Route: DELETE /api/courses/:id
     if (path.startsWith('/api/courses/') && event.httpMethod === 'DELETE') {
       const courseId = path.split('/')[3];
-      console.log('Handling /api/courses/:id DELETE request, courseId:', courseId);
+      console.log('Handling /api/courses/:id DELETE request, scoreId:', courseId);
 
       if (!token) {
         console.error('No authorization token provided');
