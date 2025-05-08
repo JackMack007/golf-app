@@ -706,6 +706,7 @@ exports.handler = async function(event, context) {
     if (path === '/api/tournament-participants' && event.httpMethod === 'POST') {
       console.log('Handling /api/tournament-participants POST request');
       const { tournament_id, user_id } = JSON.parse(event.body || '{}');
+      console.log('Request body:', { tournament_id, user_id });
       if (!tournament_id || !user_id) {
         console.log('Missing tournament_id or user_id');
         return {
@@ -746,9 +747,9 @@ exports.handler = async function(event, context) {
       const { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
         .select('tournament_id')
-        .eq('tournament_id', tournament_id)
-        .single();
-      if (tournamentError || !tournamentData) {
+        .eq('tournament_id', tournament_id);
+      console.log('Tournament query result:', { data: tournamentData, error: tournamentError });
+      if (tournamentError || !tournamentData || tournamentData.length === 0) {
         console.error('Tournament not found:', tournamentError?.message);
         return {
           statusCode: 404,
@@ -760,9 +761,9 @@ exports.handler = async function(event, context) {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('user_id')
-        .eq('user_id', user_id)
-        .single();
-      if (userError || !userData) {
+        .eq('user_id', user_id);
+      console.log('User query result:', { data: userData, error: userError });
+      if (userError || !userData || userData.length === 0) {
         console.error('User not found:', userError?.message);
         return {
           statusCode: 404,
