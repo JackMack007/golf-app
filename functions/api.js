@@ -585,6 +585,84 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: POST /api/tournaments (Admin Only)
+    if (path === '/api/tournaments' && event.httpMethod === 'POST') {
+      console.log('Handling /api/tournaments POST request');
+      const { name, start_date, end_date } = JSON.parse(event.body || '{}');
+      if (!name || !start_date || !end_date || !/^\d{4}-\d{2}-\d{2}$/.test(start_date) || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+        console.log('Missing or invalid name, start_date, or end_date');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, start_date, and end_date (YYYY-MM-DD) are required' })
+        };
+      }
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+      const userId = sessionData.user.id;
+      const { data, error } = await supabase
+        .from('tournaments')
+        .insert([{ name, start_date, end_date, created_by: userId }])
+        .select();
+      if (error) {
+        console.error('Tournament creation error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Tournament creation returned no data');
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to retrieve created tournament' })
+        };
+      }
+      console.log('Tournament created:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
+      };
+    }
+
     // Route: GET /api/tournaments
     if (path === '/api/tournaments' && event.httpMethod === 'GET') {
       console.log('Handling /api/tournaments request');
@@ -605,11 +683,216 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
         };
       }
-      // Placeholder response for tournaments (to be implemented later)
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*');
+      if (error) {
+        console.error('Tournament retrieval error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Tournaments retrieved:', data.length);
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ tournaments: [], message: 'Tournaments feature coming soon' })
+        body: JSON.stringify({ tournaments: data })
+      };
+    }
+
+    // Route: POST /api/tournament-participants (Admin Only)
+    if (path === '/api/tournament-participants' && event.httpMethod === 'POST') {
+      console.log('Handling /api/tournament-participants POST request');
+      const { tournament_id, user_id } = JSON.parse(event.body || '{}');
+      if (!tournament_id || !user_id) {
+        console.log('Missing tournament_id or user_id');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'tournament_id and user_id are required' })
+        };
+      }
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+      // Verify that the tournament exists
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from('tournaments')
+        .select('tournament_id')
+        .eq('tournament_id', tournament_id)
+        .single();
+      if (tournamentError || !tournamentData) {
+        console.error('Tournament not found:', tournamentError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
+      // Verify that the user exists
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('user_id', user_id)
+        .single();
+      if (userError || !userData) {
+        console.error('User not found:', userError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+      // Add the participant to the tournament
+      const { data, error } = await supabase
+        .from('tournament_participants')
+        .insert([{ tournament_id, user_id }])
+        .select();
+      if (error) {
+        console.error('Participant addition error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Participant addition returned no data');
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to retrieve added participant' })
+        };
+      }
+      console.log('Participant added:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
+      };
+    }
+
+    // Route: POST /api/tournament-courses (Admin Only)
+    if (path === '/api/tournament-courses' && event.httpMethod === 'POST') {
+      console.log('Handling /api/tournament-courses POST request');
+      const { tournament_id, course_id, play_date } = JSON.parse(event.body || '{}');
+      if (!tournament_id || !course_id || !play_date || !/^\d{4}-\d{2}-\d{2}$/.test(play_date)) {
+        console.log('Missing or invalid tournament_id, course_id, or play_date');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'tournament_id, course_id, and play_date (YYYY-MM-DD) are required' })
+        };
+      }
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+      // Verify that the tournament exists
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from('tournaments')
+        .select('tournament_id')
+        .eq('tournament_id', tournament_id)
+        .single();
+      if (tournamentError || !tournamentData) {
+        console.error('Tournament not found:', tournamentError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
+      // Verify that the course exists
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('course_id')
+        .eq('course_id', course_id)
+        .single();
+      if (courseError || !courseData) {
+        console.error('Course not found:', courseError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Course not found' })
+        };
+      }
+      // Add the course to the tournament
+      const { data, error } = await supabase
+        .from('tournament_courses')
+        .insert([{ tournament_id, course_id, play_date }])
+        .select();
+      if (error) {
+        console.error('Tournament course addition error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('Tournament course addition returned no data');
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to retrieve added tournament course' })
+        };
+      }
+      console.log('Tournament course added:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
       };
     }
 
@@ -640,40 +923,6 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ leaderboards: [], message: 'Leaderboards feature coming soon' })
       };
     }
-
-    // Placeholder for future admin-only tournament management endpoints
-    // Example: POST /api/tournaments (create a tournament)
-    // if (path === '/api/tournaments' && event.httpMethod === 'POST') {
-    //   console.log('Handling /api/tournaments POST request');
-    //   if (!token) {
-    //     console.error('No authorization token provided');
-    //     return {
-    //       statusCode: 401,
-    //       headers: corsHeaders,
-    //       body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-    //     };
-    //   }
-    //   let userRole;
-    //   try {
-    //     userRole = await checkUserRole(token);
-    //   } catch (error) {
-    //     console.error('Role check error:', error.message);
-    //     return {
-    //       statusCode: 401,
-    //       headers: corsHeaders,
-    //       body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
-    //     };
-    //   }
-    //   if (userRole !== 'admin') {
-    //     console.log('User role not authorized:', userRole);
-    //     return {
-    //       statusCode: 403,
-    //       headers: corsHeaders,
-    //       body: JSON.stringify({ error: 'Forbidden: Admin access required' })
-    //     };
-    //   }
-    //   // Implement tournament creation logic here
-    // }
 
     // Route: GET /api/profile
     if (path === '/api/profile' && event.httpMethod === 'GET') {
