@@ -641,6 +641,40 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Placeholder for future admin-only tournament management endpoints
+    // Example: POST /api/tournaments (create a tournament)
+    // if (path === '/api/tournaments' && event.httpMethod === 'POST') {
+    //   console.log('Handling /api/tournaments POST request');
+    //   if (!token) {
+    //     console.error('No authorization token provided');
+    //     return {
+    //       statusCode: 401,
+    //       headers: corsHeaders,
+    //       body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+    //     };
+    //   }
+    //   let userRole;
+    //   try {
+    //     userRole = await checkUserRole(token);
+    //   } catch (error) {
+    //     console.error('Role check error:', error.message);
+    //     return {
+    //       statusCode: 401,
+    //       headers: corsHeaders,
+    //       body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+    //     };
+    //   }
+    //   if (userRole !== 'admin') {
+    //     console.log('User role not authorized:', userRole);
+    //     return {
+    //       statusCode: 403,
+    //       headers: corsHeaders,
+    //       body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+    //     };
+    //   }
+    //   // Implement tournament creation logic here
+    // }
+
     // Route: GET /api/profile
     if (path === '/api/profile' && event.httpMethod === 'GET') {
       console.log('Handling /api/profile GET request');
