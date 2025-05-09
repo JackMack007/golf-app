@@ -24,7 +24,8 @@ const AdminCourses = () => {
       return;
     }
 
-    if (!user || user.role !== 'admin') {
+    if (!user) {
+      setError('Please log in to view courses.');
       setLoading(false);
       return;
     }
@@ -233,58 +234,66 @@ const AdminCourses = () => {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
 
-  if (!user || user.role !== 'admin') {
-    return <div className="container mx-auto p-4">Access denied. Admins only.</div>;
+  if (!user) {
+    return <div className="container mx-auto p-4">Please log in to view courses.</div>;
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Admin: Manage Courses</h1>
+      <h1 className="text-2xl font-bold mb-4">Courses</h1>
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500 mb-4">{error}</p>}
-      <button
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4"
-        onClick={openCreateModal}
-      >
-        Add New Course
-      </button>
-      <table className="w-full border-collapse border">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Name</th>
-            <th className="border p-2">Location</th>
-            <th className="border p-2">Par</th>
-            <th className="border p-2">Slope Value</th>
-            <th className="border p-2">Course Value</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {courses.map(course => (
-            <tr key={course.course_id}>
-              <td className="border p-2">{course.name}</td>
-              <td className="border p-2">{course.location}</td>
-              <td className="border p-2">{course.par}</td>
-              <td className="border p-2">{course.slope_value}</td>
-              <td className="border p-2">{course.course_value}</td>
-              <td className="border p-2">
-                <button
-                  className="text-green-500 hover:underline mr-2"
-                  onClick={() => openEditModal(course)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="text-red-500 hover:underline"
-                  onClick={() => handleDelete(course.course_id)}
-                >
-                  Delete
-                </button>
-              </td>
+      {user.role === 'admin' && (
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4"
+          onClick={openCreateModal}
+        >
+          Add New Course
+        </button>
+      )}
+      {courses.length > 0 ? (
+        <table className="w-full border-collapse border">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-2">Name</th>
+              <th className="border p-2">Location</th>
+              <th className="border p-2">Par</th>
+              <th className="border p-2">Slope Value</th>
+              <th className="border p-2">Course Value</th>
+              {user.role === 'admin' && <th className="border p-2">Actions</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {courses.map(course => (
+              <tr key={course.course_id}>
+                <td className="border p-2">{course.name}</td>
+                <td className="border p-2">{course.location}</td>
+                <td className="border p-2">{course.par}</td>
+                <td className="border p-2">{course.slope_value}</td>
+                <td className="border p-2">{course.course_value}</td>
+                {user.role === 'admin' && (
+                  <td className="border p-2">
+                    <button
+                      className="text-green-500 hover:underline mr-2"
+                      onClick={() => openEditModal(course)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-red-500 hover:underline"
+                      onClick={() => handleDelete(course.course_id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        !loading && <p className="text-lg">No courses available.</p>
+      )}
 
       {/* Create Course Modal */}
       {isCreateModalOpen && (

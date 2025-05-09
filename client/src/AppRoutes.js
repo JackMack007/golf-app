@@ -7,7 +7,6 @@ import ProfilePage from './components/ProfilePage';
 import AdminUsers from './components/AdminUsers';
 import AdminUserScores from './components/AdminUserScores';
 import AdminCourses from './components/AdminCourses';
-import CoursesPage from './components/CoursesPage';
 import ScoresPage from './components/ScoresPage';
 import { UserContext } from './context/UserContext';
 
@@ -17,7 +16,6 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/courses" element={<CoursesPage />} />
       <Route path="/scores" element={<ScoresPage />} />
       <Route path="/login" element={user ? <Navigate to="/profile" /> : <LoginPage />} />
       <Route path="/signup" element={user ? <Navigate to="/profile" /> : <SignupPage />} />

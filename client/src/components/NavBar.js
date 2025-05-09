@@ -20,9 +20,11 @@ function NavBar() {
           Golf App
         </div>
         <div className="space-x-4">
-          <Link to="/courses" className="text-white hover:text-blue-200">
-            Courses
-          </Link>
+          {user && (
+            <Link to="/admin/courses" className="text-white hover:text-blue-200">
+              Courses
+            </Link>
+          )}
           <Link to="/scores" className="text-white hover:text-blue-200">
             Scores
           </Link>
@@ -35,9 +37,6 @@ function NavBar() {
                 <>
                   <Link to="/admin/users" className="text-white hover:text-blue-200">
                     Admin: Users
-                  </Link>
-                  <Link to="/admin/courses" className="text-white hover:text-blue-200">
-                    Admin: Courses
                   </Link>
                 </>
               )}
