@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from '../context/UserContext';
 
@@ -6,12 +6,20 @@ function NavBar() {
   const { user, setUser, refreshUser } = useContext(UserContext);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    refreshUser(); // Ensure user data is refreshed on mount
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('session');
     setUser(null);
-    refreshUser(); // Refresh UserContext state after logout
+    refreshUser();
     navigate('/');
   };
+
+  if (user === null) {
+    return <div className="bg-blue-600 p-4 text-white">Loading...</div>; // Show loading state while user is being fetched
+  }
 
   return (
     <nav className="bg-blue-600 p-4">
@@ -37,6 +45,9 @@ function NavBar() {
                 <>
                   <Link to="/admin/users" className="text-white hover:text-blue-200">
                     Admin: Users
+                  </Link>
+                  <Link to="/admin/tournaments" className="text-white hover:text-blue-200">
+                    Admin: Tournaments
                   </Link>
                 </>
               )}

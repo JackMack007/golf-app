@@ -22,7 +22,17 @@ const AdminTournaments = () => {
       return;
     }
 
-    if (!user || user.role !== 'admin') {
+    if (user === null) {
+      return; // Wait for user data to load
+    }
+
+    if (!user) {
+      setError('Please log in to view tournaments.');
+      setLoading(false);
+      return;
+    }
+
+    if (user.role !== 'admin') {
       setLoading(false);
       return;
     }
@@ -64,7 +74,7 @@ const AdminTournaments = () => {
   };
 
   const calculateStatus = (startDate, endDate) => {
-    const currentDate = new Date('2025-05-09'); // Current date as specified
+    const currentDate = new Date('2025-05-09');
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -232,7 +242,15 @@ const AdminTournaments = () => {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
 
-  if (!user || user.role !== 'admin') {
+  if (user === null) {
+    return <div className="container mx-auto p-4">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="container mx-auto p-4">Please log in to view tournaments.</div>;
+  }
+
+  if (user.role !== 'admin') {
     return <div className="container mx-auto p-4">Access denied. Admins only.</div>;
   }
 
