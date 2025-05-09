@@ -252,29 +252,62 @@ const AdminCourses = () => {
         </button>
       )}
       {courses.length > 0 ? (
-        <table className="w-full border-collapse border">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border p-2">Name</th>
-              <th className="border p-2">Location</th>
-              <th className="border p-2">Par</th>
-              <th className="border p-2">Slope Value</th>
-              <th className="border p-2">Course Value</th>
-              {user.role === 'admin' && <th className="border p-2">Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Table layout for medium and larger screens */}
+          <div className="hidden md:block">
+            <table className="w-full border-collapse border">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border p-2">Name</th>
+                  <th className="border p-2">Location</th>
+                  <th className="border p-2">Par</th>
+                  <th className="border p-2">Slope Value</th>
+                  <th className="border p-2">Course Value</th>
+                  {user.role === 'admin' && <th className="border p-2">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {courses.map(course => (
+                  <tr key={course.course_id}>
+                    <td className="border p-2">{course.name}</td>
+                    <td className="border p-2">{course.location}</td>
+                    <td className="border p-2">{course.par}</td>
+                    <td className="border p-2">{course.slope_value}</td>
+                    <td className="border p-2">{course.course_value}</td>
+                    {user.role === 'admin' && (
+                      <td className="border p-2">
+                        <button
+                          className="text-green-500 hover:underline mr-2"
+                          onClick={() => openEditModal(course)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="text-red-500 hover:underline"
+                          onClick={() => handleDelete(course.course_id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Card layout for small screens */}
+          <div className="block md:hidden space-y-4">
             {courses.map(course => (
-              <tr key={course.course_id}>
-                <td className="border p-2">{course.name}</td>
-                <td className="border p-2">{course.location}</td>
-                <td className="border p-2">{course.par}</td>
-                <td className="border p-2">{course.slope_value}</td>
-                <td className="border p-2">{course.course_value}</td>
+              <div key={course.course_id} className="border rounded-lg p-4 bg-white shadow">
+                <h3 className="text-lg font-semibold">{course.name}</h3>
+                <p><strong>Location:</strong> {course.location}</p>
+                <p><strong>Par:</strong> {course.par}</p>
+                <p><strong>Slope Value:</strong> {course.slope_value}</p>
+                <p><strong>Course Value:</strong> {course.course_value}</p>
                 {user.role === 'admin' && (
-                  <td className="border p-2">
+                  <div className="mt-2 space-x-2">
                     <button
-                      className="text-green-500 hover:underline mr-2"
+                      className="text-green-500 hover:underline"
                       onClick={() => openEditModal(course)}
                     >
                       Edit
@@ -285,12 +318,12 @@ const AdminCourses = () => {
                     >
                       Delete
                     </button>
-                  </td>
+                  </div>
                 )}
-              </tr>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       ) : (
         !loading && <p className="text-lg">No courses available.</p>
       )}
