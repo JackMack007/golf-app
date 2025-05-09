@@ -19,8 +19,12 @@ const AdminUsers = () => {
         'Content-Type': 'application/json',
       },
     })
-      .then(res => res.json())
+      .then(res => {
+        console.log('GET /api/users response status:', res.status);
+        return res.json();
+      })
       .then(data => {
+        console.log('GET /api/users response data:', data);
         if (data.error) {
           setError(data.error);
           setLoading(false);
@@ -30,6 +34,7 @@ const AdminUsers = () => {
         }
       })
       .catch(err => {
+        console.error('GET /api/users fetch error:', err);
         setError('Failed to fetch users');
         setLoading(false);
       });
