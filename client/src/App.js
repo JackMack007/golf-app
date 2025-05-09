@@ -8,8 +8,8 @@ import ProfilePage from './components/ProfilePage'; // Updated to match actual f
 import AdminUsers from './components/AdminUsers';
 import AdminUserScores from './components/AdminUserScores';
 import AdminCourses from './components/AdminCourses';
-import Courses from './components/Courses';
-import Scores from './components/Scores';
+import Courses from './components/CoursesPage';
+import Scores from './components/ScoresPage';
 import { UserProvider } from './context/UserContext';
 import './App.css';
 
