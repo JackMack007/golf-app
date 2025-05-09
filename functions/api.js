@@ -1,8 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env' });
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-
 // CORS headers to allow requests from the frontend
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://golf-app-frontend.netlify.app',
@@ -12,12 +10,14 @@ const corsHeaders = {
 };
 
 // Helper function to check the user's role
-const checkUserRole = async (token) => {
+const checkUserRole = async (token, supabase) => {
   if (!token) {
     throw new Error('No authorization token provided');
   }
+  console.log('checkUserRole - Validating token:', token);
   const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
   if (sessionError || !sessionData?.user) {
+    console.error('checkUserRole - Session error:', sessionError?.message);
     throw new Error('Invalid session token');
   }
   const userId = sessionData.user.id;
@@ -31,8 +31,10 @@ const checkUserRole = async (token) => {
   console.log('checkUserRole - Query result:', { userData, userError });
 
   if (userError || !userData) {
+    console.error('checkUserRole - User fetch error:', userError?.message);
     throw new Error('User not found: ' + (userError?.message || 'No data returned'));
   }
+  console.log('checkUserRole - User role:', userData.user_role);
   return userData.user_role;
 };
 
@@ -40,6 +42,9 @@ exports.handler = async function(event, context) {
   console.log('Initializing api');
   console.log('Raw event path:', event.path, 'Method:', event.httpMethod);
   console.log('Headers:', event.headers);
+
+  // Initialize a fresh Supabase client for each request
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
   // Handle OPTIONS preflight request
   if (event.httpMethod === 'OPTIONS') {
@@ -314,7 +319,7 @@ exports.handler = async function(event, context) {
       let userRole;
       let userId;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
         console.log('User role retrieved:', userRole);
         const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
         if (sessionError || !sessionData?.user) {
@@ -452,8 +457,21 @@ exports.handler = async function(event, context) {
 
       // Check user role
       let userRole;
+      let userId;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
+        console.log('User role retrieved:', userRole);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+        if (sessionError || !sessionData?.user) {
+          console.error('Session error:', sessionError?.message);
+          return {
+            statusCode: 401,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+          };
+        }
+        userId = sessionData.user.id;
+        console.log('Authenticated userId for GET /api/users:', userId);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -473,6 +491,7 @@ exports.handler = async function(event, context) {
       }
 
       // Fetch all users
+      console.log('Fetching all users from Supabase');
       const { data, error } = await supabase
         .from('users')
         .select('user_id, email, name');
@@ -484,7 +503,8 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      console.log('Users retrieved:', data.length);
+      console.log('Raw data from Supabase query:', data);
+      console.log('Number of users retrieved:', data.length);
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -508,7 +528,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -594,7 +614,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -673,7 +693,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -736,7 +756,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -821,7 +841,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -939,7 +959,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -1036,7 +1056,7 @@ exports.handler = async function(event, context) {
       // Check user role
       let userRole;
       try {
-        userRole = await checkUserRole(token);
+        userRole = await checkUserRole(token, supabase);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
