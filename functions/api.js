@@ -675,6 +675,111 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: DELETE /api/users/:id (Admin Only)
+    if (path.startsWith('/api/users/') && event.httpMethod === 'DELETE') {
+      const userId = path.split('/')[3];
+      console.log('Handling /api/users/:id DELETE request, userId:', userId);
+
+      // Check for authentication token
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+        console.log('User role retrieved:', userRole);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Check if the user exists
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_id, auth_user_id')
+        .eq('user_id', userId)
+        .single();
+      if (userError || !userData) {
+        console.error('User not found:', userError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+
+      // Check for associated scores
+      const { data: associatedScores, error: scoreError } = await supabase
+        .from('scores')
+        .select('score_id')
+        .eq('user_id', userId);
+      if (scoreError) {
+        console.error('Error checking associated scores:', scoreError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: scoreError.message })
+        };
+      }
+      if (associatedScores && associatedScores.length > 0) {
+        console.log('Cannot delete user with associated scores:', associatedScores.length);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Cannot delete user with associated scores' })
+        };
+      }
+
+      // Delete the user from the users table
+      const { error: deleteError } = await supabase
+        .from('users')
+        .delete()
+        .eq('user_id', userId);
+      if (deleteError) {
+        console.error('User deletion error:', deleteError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: deleteError.message })
+        };
+      }
+
+      // Delete the user from Supabase Auth
+      const { error: authError } = await supabase.auth.admin.deleteUser(userData.auth_user_id);
+      if (authError) {
+        console.error('Auth user deletion error:', authError.message);
+        // Note: The user has already been deleted from the users table, so we log the error but proceed
+        console.warn('Proceeding despite auth deletion error; user already removed from users table');
+      }
+
+      console.log('User deleted:', userId);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'User deleted successfully' })
+      };
+    }
+
     // Route: GET /api/courses
     if (path === '/api/courses' && event.httpMethod === 'GET') {
       console.log('Handling /api/courses request');
@@ -759,7 +864,7 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      if (!data || data.length === 0) {
+      if (!data || data.length == 0) {
         console.error('Course creation returned no data');
         return {
           statusCode: 500,

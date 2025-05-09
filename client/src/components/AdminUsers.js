@@ -127,6 +127,41 @@ const AdminUsers = () => {
     }
   };
 
+  const handleDelete = async (userId) => {
+    const confirmed = window.confirm('Are you sure you want to delete this user? This action cannot be undone.');
+    if (!confirmed) return;
+
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('DELETE /api/users/:id response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
+      // Remove the user from the local state
+      setUsers(prevUsers => prevUsers.filter(u => u.user_id !== userId));
+      alert('User deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   if (contextError) {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
@@ -165,7 +200,7 @@ const AdminUsers = () => {
                 </button>
                 <button
                   className="text-red-500 hover:underline"
-                  onClick={() => alert('Delete functionality coming soon!')}
+                  onClick={() => handleDelete(user.user_id)}
                 >
                   Delete
                 </button>
