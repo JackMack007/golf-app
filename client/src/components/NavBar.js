@@ -3,12 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from '../context/UserContext';
 
 function NavBar() {
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, refreshUser } = useContext(UserContext);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem('session');
     setUser(null);
+    refreshUser(); // Refresh UserContext state after logout
     navigate('/');
   };
 
