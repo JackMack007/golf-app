@@ -1,34 +1,42 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { UserProvider } from './context/UserContext';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
-import ProfilePage from './components/ProfilePage';
-import LoginPage from './components/LoginPage';
-import CoursesPage from './components/CoursesPage';
-import ScoresPage from './components/ScoresPage';
-import SignupPage from './components/SignupPage';
+import Home from './components/Home';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Profile from './components/Profile';
 import AdminUsers from './components/AdminUsers';
 import AdminUserScores from './components/AdminUserScores';
+import AdminCourses from './components/AdminCourses';
+import { UserProvider } from './context/UserContext';
+import './App.css';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    setIsAuthenticated(!!session);
+  }, []);
+
   return (
-    <BrowserRouter>
-      <UserProvider>
-        <div className="min-h-screen bg-gray-100">
-          <NavBar />
+    <UserProvider>
+      <Router>
+        <div className="App">
+          <NavBar setIsAuthenticated={setIsAuthenticated} />
           <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/courses" element={<CoursesPage />} />
-            <Route path="/scores" element={<ScoresPage />} />
-            <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/profile" /> : <Login setIsAuthenticated={setIsAuthenticated} />} />
+            <Route path="/signup" element={isAuthenticated ? <Navigate to="/profile" /> : <Signup setIsAuthenticated={setIsAuthenticated} />} />
+            <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
+            <Route path="/admin/courses" element={<AdminCourses />} />
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
-      </UserProvider>
-    </BrowserRouter>
+      </Router>
+    </UserProvider>
   );
 }
 
