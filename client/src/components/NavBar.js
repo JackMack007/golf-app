@@ -32,9 +32,14 @@ function NavBar() {
                 Profile
               </Link>
               {user.role === 'admin' && (
-                <Link to="/admin/users" className="text-white hover:text-blue-200">
-                  Admin: Users
-                </Link>
+                <>
+                  <Link to="/admin/users" className="text-white hover:text-blue-200">
+                    Admin: Users
+                  </Link>
+                  <Link to="/admin/courses" className="text-white hover:text-blue-200">
+                    Admin: Courses
+                  </Link>
+                </>
               )}
               <button
                 onClick={handleLogout}
