@@ -30,8 +30,9 @@ const LoginPage = () => {
 
       localStorage.setItem('session', JSON.stringify(data.session));
       setUser(data.user);
-      refreshUser();
-      navigate('/profile'); // Manual redirect as a fallback
+      await refreshUser(); // Ensure refreshUser completes
+      console.log('LoginPage: User after refresh =', data.user); // Debug log
+      navigate('/profile');
     } catch (err) {
       setError(err.message);
     }

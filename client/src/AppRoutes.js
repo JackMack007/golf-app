@@ -7,11 +7,14 @@ import ProfilePage from './components/ProfilePage';
 import AdminUsers from './components/AdminUsers';
 import AdminUserScores from './components/AdminUserScores';
 import AdminCourses from './components/AdminCourses';
+import AdminTournaments from './components/AdminTournaments';
 import ScoresPage from './components/ScoresPage';
 import { UserContext } from './context/UserContext';
 
 const AppRoutes = () => {
   const { user } = useContext(UserContext);
+
+  console.log('AppRoutes: user =', user); // Debug log to check user object
 
   return (
     <Routes>
@@ -23,6 +26,8 @@ const AppRoutes = () => {
       <Route path="/admin/users" element={<AdminUsers />} />
       <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
       <Route path="/admin/courses" element={<AdminCourses />} />
+      <Route path="/admin/tournaments" element={<AdminTournaments />} />
+      <Route path="/test-tournaments" element={<div>Test Tournaments Route</div>} /> {/* Temporary route for debugging */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
