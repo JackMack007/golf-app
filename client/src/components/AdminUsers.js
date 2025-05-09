@@ -23,6 +23,11 @@ const AdminUsers = () => {
       return;
     }
 
+    fetchUsers();
+  }, [user, contextError]);
+
+  const fetchUsers = () => {
+    setLoading(true);
     const session = JSON.parse(localStorage.getItem('session'));
     if (!session || !session.access_token) {
       setError('No valid session token found');
@@ -55,7 +60,7 @@ const AdminUsers = () => {
         setError('Failed to fetch users');
         setLoading(false);
       });
-  }, [user, contextError]);
+  };
 
   const openEditModal = (user) => {
     setEditingUser(user);
@@ -78,11 +83,48 @@ const AdminUsers = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    console.log('Saving updated user:', { userId: editingUser.user_id, ...formData });
-    // Placeholder for backend integration
-    alert('Save functionality coming soon! Updated values logged to console.');
-    closeModal();
+  const handleSave = async () => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      closeModal();
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/users/${editingUser.user_id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          handicap: parseFloat(formData.handicap),
+        }),
+      });
+
+      const data = await response.json();
+      console.log('PUT /api/users/:id response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update user');
+      }
+
+      // Update the local users state with the updated user
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u.user_id === editingUser.user_id ? { ...u, name: formData.name, email: formData.email, handicap: parseFloat(formData.handicap) } : u
+        )
+      );
+
+      alert('User updated successfully!');
+      closeModal();
+    } catch (err) {
+      console.error('Error updating user:', err);
+      alert(`Error: ${err.message}`);
+    }
   };
 
   if (contextError) {

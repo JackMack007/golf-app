@@ -569,6 +569,112 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: PUT /api/users/:id (Admin Only)
+    if (path.startsWith('/api/users/') && event.httpMethod === 'PUT') {
+      const userId = path.split('/')[3];
+      console.log('Handling /api/users/:id PUT request, userId:', userId);
+      const { name, email, handicap } = JSON.parse(event.body || '{}');
+      console.log('PUT /api/users/:id body:', { name, email, handicap });
+
+      // Validate request body
+      if (!name || !email || handicap === undefined) {
+        console.log('Missing required fields: name, email, or handicap');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, email, and handicap are required' })
+        };
+      }
+
+      // Validate handicap
+      const parsedHandicap = parseFloat(handicap);
+      if (isNaN(parsedHandicap) || parsedHandicap < 0) {
+        console.log('Invalid handicap value:', handicap);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'handicap must be a non-negative number' })
+        };
+      }
+
+      // Check for authentication token
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+        console.log('User role retrieved:', userRole);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Verify that the user exists
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single();
+      if (fetchError || !existingUser) {
+        console.error('User not found:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+
+      // Update the user
+      const { data, error } = await supabase
+        .from('users')
+        .update({ name, email, handicap: parsedHandicap })
+        .eq('user_id', userId)
+        .select();
+      if (error) {
+        console.error('User update error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      if (!data || data.length === 0) {
+        console.error('User update returned no data');
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+      console.log('User updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data[0])
+      };
+    }
+
     // Route: GET /api/courses
     if (path === '/api/courses' && event.httpMethod === 'GET') {
       console.log('Handling /api/courses request');
