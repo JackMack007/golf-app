@@ -7,6 +7,9 @@ const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({ name: '', email: '', handicap: '' });
 
   useEffect(() => {
     if (contextError) {
@@ -54,6 +57,34 @@ const AdminUsers = () => {
       });
   }, [user, contextError]);
 
+  const openEditModal = (user) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      handicap: user.handicap || 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+    setFormData({ name: '', email: '', handicap: '' });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = () => {
+    console.log('Saving updated user:', { userId: editingUser.user_id, ...formData });
+    // Placeholder for backend integration
+    alert('Save functionality coming soon! Updated values logged to console.');
+    closeModal();
+  };
+
   if (contextError) {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
@@ -86,7 +117,7 @@ const AdminUsers = () => {
                 </Link>
                 <button
                   className="text-green-500 hover:underline mr-2"
-                  onClick={() => alert('Edit functionality coming soon!')}
+                  onClick={() => openEditModal(user)}
                 >
                   Edit
                 </button>
@@ -101,6 +132,60 @@ const AdminUsers = () => {
           ))}
         </tbody>
       </table>
+
+      {/* Edit User Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit User</h2>
+            <div className="mb-4">
+              <label className="block text-gray-700">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700">Handicap</label>
+              <input
+                type="number"
+                name="handicap"
+                value={formData.handicap}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded"
+                min="0"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={closeModal}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
