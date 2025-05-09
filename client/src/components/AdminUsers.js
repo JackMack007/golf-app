@@ -3,16 +3,30 @@ import { Link } from 'react-router-dom';
 import { UserContext } from '../context/UserContext';
 
 const AdminUsers = () => {
-  const { user } = useContext(UserContext);
+  const { user, error: contextError } = useContext(UserContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    if (contextError) {
+      setError(contextError);
+      setLoading(false);
       return;
     }
+
+    if (!user || user.role !== 'admin') {
+      setLoading(false);
+      return;
+    }
+
     const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      setLoading(false);
+      return;
+    }
+
     fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/users', {
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
@@ -38,7 +52,11 @@ const AdminUsers = () => {
         setError('Failed to fetch users');
         setLoading(false);
       });
-  }, [user]);
+  }, [user, contextError]);
+
+  if (contextError) {
+    return <div className="container mx-auto p-4">Error: {contextError}</div>;
+  }
 
   if (!user || user.role !== 'admin') {
     return <div className="container mx-auto p-4">Access denied. Admins only.</div>;
