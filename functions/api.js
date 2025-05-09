@@ -490,11 +490,11 @@ exports.handler = async function(event, context) {
         };
       }
 
-      // Fetch all users
+      // Fetch all users with handicap
       console.log('Fetching all users from Supabase');
       const { data, error } = await supabase
         .from('users')
-        .select('user_id, email, name');
+        .select('user_id, email, name, handicap');
       if (error) {
         console.error('Users retrieval error:', error.message);
         return {
@@ -547,10 +547,10 @@ exports.handler = async function(event, context) {
         };
       }
 
-      // Fetch user details
+      // Fetch user details with handicap
       const { data, error } = await supabase
         .from('users')
-        .select('user_id, email, name')
+        .select('user_id, email, name, handicap')
         .eq('user_id', userId)
         .single();
       if (error || !data) {
