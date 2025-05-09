@@ -1,38 +1,17 @@
-import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
 import NavBar from './components/NavBar';
-import Home from './components/Home';
-import LoginPage from './components/LoginPage';
-import SignupPage from './components/SignupPage';
-import ProfilePage from './components/ProfilePage';
-import AdminUsers from './components/AdminUsers';
-import AdminUserScores from './components/AdminUserScores';
-import AdminCourses from './components/AdminCourses';
-import CoursesPage from './components/CoursesPage';
-import ScoresPage from './components/ScoresPage';
-import { UserContext, UserProvider } from './context/UserContext';
+import AppRoutes from './AppRoutes';
+import { UserProvider } from './context/UserContext';
 import './App.css';
 
 function App() {
-  const { user } = useContext(UserContext);
-
   return (
     <UserProvider>
       <Router>
         <div className="App">
           <NavBar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/courses" element={<CoursesPage />} />
-            <Route path="/scores" element={<ScoresPage />} />
-            <Route path="/login" element={user ? <Navigate to="/profile" /> : <LoginPage />} />
-            <Route path="/signup" element={user ? <Navigate to="/profile" /> : <SignupPage />} />
-            <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
-            <Route path="/admin/courses" element={<AdminCourses />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+          <AppRoutes />
         </div>
       </Router>
     </UserProvider>
