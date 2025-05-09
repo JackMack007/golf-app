@@ -56,7 +56,17 @@ exports.handler = async function(event, context) {
       .replace(/^\/\.netlify\/functions\/api\/?/, '/api/')
       .replace(/^\/api\/api\/?/, '/api/')
       .replace(/^\/+/, '/');
-    console.log('Normalized path:', path);
+    console.log('Normalized path after first replacement:', path);
+
+    // Additional normalization for trailing slashes
+    path = path.replace(/\/+$/, '');
+    console.log('Normalized path after trailing slash removal:', path);
+
+    // Ensure path starts with /api
+    if (!path.startsWith('/api')) {
+      path = '/api' + (path.startsWith('/') ? path : '/' + path);
+    }
+    console.log('Final normalized path:', path);
 
     // Extract token for authentication
     const token = event.headers['authorization']?.split(' ')[1];
@@ -425,6 +435,117 @@ exports.handler = async function(event, context) {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify({ message: 'Score deleted successfully' })
+      };
+    }
+
+    // Route: GET /api/users (Admin Only)
+    if (path === '/api/users' && event.httpMethod === 'GET') {
+      console.log('Handling /api/users request');
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Fetch all users
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_id, email, name');
+      if (error) {
+        console.error('Users retrieval error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+      console.log('Users retrieved:', data.length);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
+      };
+    }
+
+    // Route: GET /api/users/:id (Admin Only)
+    if (path.startsWith('/api/users/') && event.httpMethod === 'GET') {
+      const userId = path.split('/')[3];
+      console.log('Handling /api/users/:id GET request, userId:', userId);
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Fetch user details
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_id, email, name')
+        .eq('user_id', userId)
+        .single();
+      if (error || !data) {
+        console.error('User retrieval error:', error?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'User not found' })
+        };
+      }
+      console.log('User retrieved:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
       };
     }
 
@@ -1038,11 +1159,14 @@ exports.handler = async function(event, context) {
         };
       }
       const userId = sessionData.user.id;
+      console.log('Fetching profile for userId:', userId);
+
+      // Fetch user profile without .single() to handle multiple/no rows
       const { data, error } = await supabase
         .from('users')
         .select('name, email, handicap, user_role')
-        .eq('auth_user_id', userId)
-        .single();
+        .eq('auth_user_id', userId);
+
       if (error) {
         console.error('User retrieval error:', error.message);
         return {
@@ -1051,22 +1175,35 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      if (!data) {
+
+      if (!data || data.length === 0) {
+        console.error('No user found for auth_user_id:', userId);
         return {
           statusCode: 404,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'User not found' })
         };
       }
-      console.log('User retrieved:', data);
+
+      if (data.length > 1) {
+        console.error('Multiple users found for auth_user_id:', userId);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Multiple users found for this auth_user_id' })
+        };
+      }
+
+      const userData = data[0];
+      console.log('User retrieved:', userData);
       return {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify({
-          name: data.name || '',
-          email: data.email,
-          handicap: data.handicap || 0,
-          role: data.user_role || 'user'
+          name: userData.name || '',
+          email: userData.email,
+          handicap: userData.handicap || 0,
+          role: userData.user_role || 'user'
         })
       };
     }
