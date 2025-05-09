@@ -81,9 +81,21 @@ const AdminUsers = () => {
               <td className="border p-2">{user.name}</td>
               <td className="border p-2">{user.email}</td>
               <td className="border p-2">
-                <Link to={`/admin/users/${user.user_id}/scores`} className="text-blue-500 hover:underline">
+                <Link to={`/admin/users/${user.user_id}/scores`} className="text-blue-500 hover:underline mr-2">
                   View Scores
                 </Link>
+                <button
+                  className="text-green-500 hover:underline mr-2"
+                  onClick={() => alert('Edit functionality coming soon!')}
+                >
+                  Edit
+                </button>
+                <button
+                  className="text-red-500 hover:underline"
+                  onClick={() => alert('Delete functionality coming soon!')}
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
