@@ -1,8 +1,7 @@
-[build]
-  command = "npm install"
-  functions = "functions"
-  node_bundler = "esbuild"
-  publish = "."
+  [build]
+  base = "client"
+  command = "npm run build"
+  publish = "client/build"
 
 [build.environment]
   NODE_VERSION = "22"
