@@ -1954,4 +1954,4 @@ exports.handler = async function(event, context) {
         };
       }
       const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-      if (session
+      if
