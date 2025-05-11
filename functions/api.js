@@ -1534,6 +1534,7 @@ exports.handler = async function(event, context) {
       let userRole;
       try {
         userRole = await checkUserRole(token, supabase);
+        console.log('User role retrieved:', userRole);
       } catch (error) {
         console.error('Role check error:', error.message);
         return {
@@ -1686,6 +1687,233 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: GET /api/tournament-courses/:tournament_id
+    if (path.startsWith('/api/tournament-courses/') && event.httpMethod === 'GET') {
+      const tournamentId = path.split('/')[3];
+      console.log('Handling /api/tournament-courses/:tournament_id GET request, tournamentId:', tournamentId);
+
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+      if (sessionError || !sessionData?.user) {
+        console.error('Session error:', sessionError?.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Fetch assigned courses with course details
+      const { data, error } = await supabase
+        .from('tournament_courses')
+        .select('id, course_id, play_date, courses!tournament_courses_course_id_fkey(course_id, name, location)')
+        .eq('tournament_id', tournamentId);
+
+      if (error) {
+        console.error('Tournament courses retrieval error:', error.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+
+      console.log('Tournament courses retrieved:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ courses: data })
+      };
+    }
+
+    // Route: PUT /api/tournament-courses/:id (Admin Only)
+    if (path.startsWith('/api/tournament-courses/') && event.httpMethod === 'PUT') {
+      const courseAssignmentId = path.split('/')[3];
+      console.log('Handling /api/tournament-courses/:id PUT request, courseAssignmentId:', courseAssignmentId);
+      const { play_date } = JSON.parse(event.body || '{}');
+
+      if (!play_date || !/^\d{4}-\d{2}-\d{2}$/.test(play_date)) {
+        console.log('Missing or invalid play_date');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'play_date (YYYY-MM-DD) is required' })
+        };
+      }
+
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Verify that the course assignment record exists
+      const { data: assignmentData, error: fetchError } = await supabase
+        .from('tournament_courses')
+        .select('id')
+        .eq('id', courseAssignmentId)
+        .single();
+      if (fetchError || !assignmentData) {
+        console.error('Course assignment not found:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Course assignment not found' })
+        };
+      }
+
+      // Update the play_date
+      const { data, error } = await supabase
+        .from('tournament_courses')
+        .update({ play_date })
+        .eq('id', courseAssignmentId)
+        .select()
+        .single();
+      if (error || !data) {
+        console.error('Course assignment update error:', error?.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
+
+      console.log('Course assignment updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
+      };
+    }
+
+    // Route: DELETE /api/tournament-courses/:id (Admin Only)
+    if (path.startsWith('/api/tournament-courses/') && event.httpMethod === 'DELETE') {
+      const courseAssignmentId = path.split('/')[3];
+      console.log('Handling /api/tournament-courses/:id DELETE request, courseAssignmentId:', courseAssignmentId);
+
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+
+      // Verify that the course assignment record exists
+      const { data: assignmentData, error: fetchError } = await supabase
+        .from('tournament_courses')
+        .select('id')
+        .eq('id', courseAssignmentId)
+        .single();
+      if (fetchError || !assignmentData) {
+        console.error('Course assignment not found:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Course assignment not found' })
+        };
+      }
+
+      // Delete the course assignment record
+      const { error: deleteError } = await supabase
+        .from('tournament_courses')
+        .delete()
+        .eq('id', courseAssignmentId);
+      if (deleteError) {
+        console.error('Course assignment deletion error:', deleteError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: deleteError.message })
+        };
+      }
+
+      console.log('Course assignment deleted:', courseAssignmentId);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Course assignment deleted successfully' })
+      };
+    }
+
     // Route: GET /api/leaderboards
     if (path === '/api/leaderboards' && event.httpMethod === 'GET') {
       console.log('Handling /api/leaderboards request');
@@ -1726,151 +1954,4 @@ exports.handler = async function(event, context) {
         };
       }
       const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-      if (sessionError || !sessionData?.user) {
-        console.error('Session error:', sessionError?.message);
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-        };
-      }
-      const userId = sessionData.user.id;
-      console.log('Fetching profile for userId:', userId);
-
-      // Fetch user profile without .single() to handle multiple/no rows
-      const { data, error } = await supabase
-        .from('users')
-        .select('name, email, handicap, user_role')
-        .eq('auth_user_id', userId);
-
-      if (error) {
-        console.error('User retrieval error:', error.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: error.message })
-        };
-      }
-
-      if (!data || data.length === 0) {
-        console.error('No user found for auth_user_id:', userId);
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'User not found' })
-        };
-      }
-
-      if (data.length > 1) {
-        console.error('Multiple users found for auth_user_id:', userId);
-        return {
-          statusCode: 500,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Multiple users found for this auth_user_id' })
-        };
-      }
-
-      const userData = data[0];
-      console.log('User retrieved:', userData);
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          name: userData.name || '',
-          email: userData.email,
-          handicap: userData.handicap || 0,
-          role: userData.user_role || 'user'
-        })
-      };
-    }
-
-    // Route: PUT /api/profile
-    if (path === '/api/profile' && event.httpMethod === 'PUT') {
-      console.log('Handling /api/profile PUT request');
-      const { name, email, handicap } = JSON.parse(event.body || '{}');
-      console.log('PUT /api/profile body:', { name, email, handicap });
-      if (!token) {
-        console.error('No authorization token provided');
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-        };
-      }
-      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-      if (sessionError || !sessionData?.user) {
-        console.error('Session error:', sessionError?.message);
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-        };
-      }
-      const userId = sessionData.user.id;
-
-      // Fetch the current user data to fill in missing fields
-      const { data: currentUser, error: fetchError } = await supabase
-        .from('users')
-        .select('name, email, handicap, user_role')
-        .eq('auth_user_id', userId)
-        .single();
-      if (fetchError || !currentUser) {
-        console.error('User fetch error:', fetchError?.message);
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'User not found' })
-        };
-      }
-
-      // Use current values for any missing fields
-      const updatedData = {
-        name: name !== undefined && name !== '' ? name : currentUser.name,
-        email: email !== undefined && email !== '' ? email : currentUser.email,
-        handicap: handicap !== undefined ? parseFloat(handicap) : currentUser.handicap
-      };
-
-      const { data, error } = await supabase
-        .from('users')
-        .update(updatedData)
-        .eq('auth_user_id', userId)
-        .select();
-      if (error) {
-        console.error('User update error:', error.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: error.message })
-        };
-      }
-      if (!data || data.length === 0) {
-        console.error('User update returned no data');
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'User not found' })
-        };
-      }
-      console.log('User updated:', data);
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(data[0])
-      };
-    }
-
-    console.log('No matching route:', path, event.httpMethod);
-    return {
-      statusCode: 404,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Not found' })
-    };
-  } catch (error) {
-    console.error('Error in api:', error.message, error.stack);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Server error' })
-    };
-  }
-};
+      if (session
