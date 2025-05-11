@@ -14,7 +14,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/auth/signin', {
+      const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
