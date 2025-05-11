@@ -59,6 +59,7 @@ const AdminTournaments = () => {
 
       const data = await response.json();
       console.log('GET /api/tournaments response data:', data);
+      console.log('Tournaments fetched with IDs:', data.tournaments?.map(t => ({ id: t.tournament_id, name: t.name })));
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch tournaments');
@@ -97,6 +98,7 @@ const AdminTournaments = () => {
   };
 
   const openEditModal = (tournament) => {
+    console.log('Opening edit modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
     setEditingTournament(tournament);
     setFormData({
       name: tournament.name,
@@ -168,6 +170,13 @@ const AdminTournaments = () => {
       return;
     }
 
+    console.log('Editing tournament with ID:', editingTournament.tournament_id);
+    console.log('Edit request payload:', {
+      name: formData.name,
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+    });
+
     try {
       const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournaments/${editingTournament.tournament_id}`, {
         method: 'PUT',
@@ -205,6 +214,7 @@ const AdminTournaments = () => {
   };
 
   const handleDelete = async (tournamentId) => {
+    console.log('Attempting to delete tournament with ID:', tournamentId);
     const confirmed = window.confirm('Are you sure you want to delete this tournament? This action cannot be undone.');
     if (!confirmed) return;
 

@@ -1109,7 +1109,7 @@ exports.handler = async function(event, context) {
 
     // Route: GET /api/tournaments
     if (path === '/api/tournaments' && event.httpMethod === 'GET') {
-      console.log('Handling /api/tournaments request');
+      console.log('Handling /api/tournaments GET request');
       if (!token) {
         console.error('No authorization token provided');
         return {
@@ -1138,7 +1138,7 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: error.message })
         };
       }
-      console.log('Tournaments retrieved:', data.length);
+      console.log('Tournaments retrieved:', data);
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -1151,6 +1151,7 @@ exports.handler = async function(event, context) {
       const tournamentId = path.split('/')[3];
       console.log('Handling /api/tournaments/:id PUT request, tournamentId:', tournamentId);
       const { name, start_date, end_date } = JSON.parse(event.body || '{}');
+      console.log('PUT /api/tournaments/:id body:', { name, start_date, end_date });
       if (!name || !start_date || !end_date || !/^\d{4}-\d{2}-\d{2}$/.test(start_date) || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
         console.log('Missing or invalid name, start_date, or end_date');
         return {
@@ -1187,6 +1188,21 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ error: 'Forbidden: Admin access required' })
         };
       }
+      // Fetch the tournament to confirm it exists
+      const { data: existingTournament, error: fetchError } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+      console.log('Tournament fetch result:', { existingTournament, fetchError });
+      if (fetchError || !existingTournament) {
+        console.error('Tournament not found:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
       // Update the tournament
       const { data, error } = await supabase
         .from('tournaments')
@@ -1194,6 +1210,7 @@ exports.handler = async function(event, context) {
         .eq('id', tournamentId)
         .select()
         .single();
+      console.log('Tournament update result:', { data, error });
       if (error || !data) {
         console.error('Tournament update error:', error?.message);
         return {
@@ -1246,11 +1263,28 @@ exports.handler = async function(event, context) {
         };
       }
 
+      // Fetch the tournament to confirm it exists
+      const { data: existingTournament, error: fetchError } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+      console.log('Tournament fetch result:', { existingTournament, fetchError });
+      if (fetchError || !existingTournament) {
+        console.error('Tournament not found:', fetchError?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
+
       // Check for associated participants
       const { data: associatedParticipants, error: participantError } = await supabase
         .from('tournament_participants')
         .select('id')
         .eq('tournament_id', tournamentId);
+      console.log('Associated participants check:', { associatedParticipants, participantError });
       if (participantError) {
         console.error('Error checking associated participants:', participantError.message);
         return {
@@ -1273,6 +1307,7 @@ exports.handler = async function(event, context) {
         .from('tournament_courses')
         .select('id')
         .eq('tournament_id', tournamentId);
+      console.log('Associated courses check:', { associatedCourses, courseError });
       if (courseError) {
         console.error('Error checking associated courses:', courseError.message);
         return {
@@ -1297,6 +1332,7 @@ exports.handler = async function(event, context) {
         .eq('id', tournamentId)
         .select()
         .single();
+      console.log('Tournament deletion result:', { data, error });
       if (error || !data) {
         console.error('Tournament deletion error:', error?.message);
         return {
