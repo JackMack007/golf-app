@@ -1192,7 +1192,7 @@ exports.handler = async function(event, context) {
       const { data: existingTournament, error: fetchError } = await supabase
         .from('tournaments')
         .select('*')
-        .eq('id', tournamentId)
+        .eq('tournament_id', tournamentId)
         .single();
       console.log('Tournament fetch result:', { existingTournament, fetchError });
       if (fetchError || !existingTournament) {
@@ -1207,7 +1207,7 @@ exports.handler = async function(event, context) {
       const { data, error } = await supabase
         .from('tournaments')
         .update({ name, start_date, end_date })
-        .eq('id', tournamentId)
+        .eq('tournament_id', tournamentId)
         .select()
         .single();
       console.log('Tournament update result:', { data, error });
@@ -1267,7 +1267,7 @@ exports.handler = async function(event, context) {
       const { data: existingTournament, error: fetchError } = await supabase
         .from('tournaments')
         .select('*')
-        .eq('id', tournamentId)
+        .eq('tournament_id', tournamentId)
         .single();
       console.log('Tournament fetch result:', { existingTournament, fetchError });
       if (fetchError || !existingTournament) {
@@ -1329,7 +1329,7 @@ exports.handler = async function(event, context) {
       const { data, error } = await supabase
         .from('tournaments')
         .delete()
-        .eq('id', tournamentId)
+        .eq('tournament_id', tournamentId)
         .select()
         .single();
       console.log('Tournament deletion result:', { data, error });
@@ -1393,8 +1393,8 @@ exports.handler = async function(event, context) {
       // Verify that the tournament exists
       const { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
-        .select('id')
-        .eq('id', tournament_id);
+        .select('tournament_id')
+        .eq('tournament_id', tournament_id);
       console.log('Tournament query result:', { data: tournamentData, error: tournamentError });
       if (tournamentError || !tournamentData || tournamentData.length === 0) {
         console.error('Tournament not found:', tournamentError?.message);
@@ -1490,8 +1490,8 @@ exports.handler = async function(event, context) {
       // Verify that the tournament exists
       const { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
-        .select('id')
-        .eq('id', tournament_id)
+        .select('tournament_id')
+        .eq('tournament_id', tournament_id)
         .single();
       if (tournamentError || !tournamentData) {
         console.error('Tournament not found:', tournamentError?.message);
