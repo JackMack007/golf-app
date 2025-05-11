@@ -33,8 +33,8 @@ exports.handler = async function(event, context) {
       .replace(/\/+$/, '');
     console.log('Normalized path:', path);
 
-    // Route: POST /api/auth/signup
-    if (path === '/api/auth/signup' && event.httpMethod === 'POST') {
+    // Route: POST /api/signup
+    if (path === '/api/signup' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signup request');
       const { email, password, name } = JSON.parse(event.body || '{}');
       if (!email || !password) {
@@ -90,8 +90,8 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Route: POST /api/auth/signin
-    if (path === '/api/auth/signin' && event.httpMethod === 'POST') {
+    // Route: POST /api/signin
+    if (path === '/api/signin' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signin request');
       const { email, password } = JSON.parse(event.body || '{}');
       if (!email || !password) {
