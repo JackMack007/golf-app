@@ -1146,6 +1146,173 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Route: PUT /api/tournaments/:id (Admin Only)
+    if (path.startsWith('/api/tournaments/') && event.httpMethod === 'PUT') {
+      const tournamentId = path.split('/')[3];
+      console.log('Handling /api/tournaments/:id PUT request, tournamentId:', tournamentId);
+      const { name, start_date, end_date } = JSON.parse(event.body || '{}');
+      if (!name || !start_date || !end_date || !/^\d{4}-\d{2}-\d{2}$/.test(start_date) || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+        console.log('Missing or invalid name, start_date, or end_date');
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'name, start_date, and end_date (YYYY-MM-DD) are required' })
+        };
+      }
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+      if (userRole !== 'admin') {
+        console.log('User role not authorized:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Admin access required' })
+        };
+      }
+      // Update the tournament
+      const { data, error } = await supabase
+        .from('tournaments')
+        .update({ name, start_date, end_date })
+        .eq('id', tournamentId)
+        .select()
+        .single();
+      if (error || !data) {
+        console.error('Tournament update error:', error?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
+      console.log('Tournament updated:', data);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
+      };
+    }
+
+    // Route: DELETE /api/tournaments/:id (Admin Only)
+    if (path.startsWith('/api/tournaments/') && event.httpMethod === 'DELETE') {
+      const tournamentId = path.split('/')[3];
+      console.log('Handling /api/tournaments/:id DELETE request, tournamentId:', tournamentId);
+
+      if (!token) {
+        console.error('No authorization token provided');
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+        };
+      }
+
+      // Check user role
+      let userRole;
+      try {
+        userRole = await checkUserRole(token, supabase);
+      } catch (error) {
+        console.error('Role check error:', error.message);
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        };
+      }
+
+      if (userRole !== 'admin') {
+        console.log('User role not authorized for deletion:', userRole);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Only admins can delete tournaments' })
+        };
+      }
+
+      // Check for associated participants
+      const { data: associatedParticipants, error: participantError } = await supabase
+        .from('tournament_participants')
+        .select('id')
+        .eq('tournament_id', tournamentId);
+      if (participantError) {
+        console.error('Error checking associated participants:', participantError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: participantError.message })
+        };
+      }
+      if (associatedParticipants && associatedParticipants.length > 0) {
+        console.log('Cannot delete tournament with associated participants:', associatedParticipants.length);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Cannot delete tournament with associated participants' })
+        };
+      }
+
+      // Check for associated courses
+      const { data: associatedCourses, error: courseError } = await supabase
+        .from('tournament_courses')
+        .select('id')
+        .eq('tournament_id', tournamentId);
+      if (courseError) {
+        console.error('Error checking associated courses:', courseError.message);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: courseError.message })
+        };
+      }
+      if (associatedCourses && associatedCourses.length > 0) {
+        console.log('Cannot delete tournament with associated courses:', associatedCourses.length);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Forbidden: Cannot delete tournament with associated courses' })
+        };
+      }
+
+      // Proceed with deletion for admin
+      const { data, error } = await supabase
+        .from('tournaments')
+        .delete()
+        .eq('id', tournamentId)
+        .select()
+        .single();
+      if (error || !data) {
+        console.error('Tournament deletion error:', error?.message);
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Tournament not found' })
+        };
+      }
+      console.log('Tournament deleted:', tournamentId);
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(data)
+      };
+    }
+
     // Route: POST /api/tournament-participants (Admin Only)
     if (path === '/api/tournament-participants' && event.httpMethod === 'POST') {
       console.log('Handling /api/tournament-participants POST request');
@@ -1190,8 +1357,8 @@ exports.handler = async function(event, context) {
       // Verify that the tournament exists
       const { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
-        .select('tournament_id')
-        .eq('tournament_id', tournament_id);
+        .select('id')
+        .eq('id', tournament_id);
       console.log('Tournament query result:', { data: tournamentData, error: tournamentError });
       if (tournamentError || !tournamentData || tournamentData.length === 0) {
         console.error('Tournament not found:', tournamentError?.message);
@@ -1287,8 +1454,8 @@ exports.handler = async function(event, context) {
       // Verify that the tournament exists
       const { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
-        .select('tournament_id')
-        .eq('tournament_id', tournament_id)
+        .select('id')
+        .eq('id', tournament_id)
         .single();
       if (tournamentError || !tournamentData) {
         console.error('Tournament not found:', tournamentError?.message);
