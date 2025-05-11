@@ -1,7 +1,15 @@
-  [build]
+[build]
   base = "client"
   command = "npm run build"
   publish = "client/build"
+
+[[build.commands]]
+  command = "cd ../functions && npm install"
+  context = "preBuild"
+
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"
 
 [build.environment]
   NODE_VERSION = "22"
@@ -51,7 +59,6 @@
   to = "/.netlify/functions/leaderboards"
   status = 200
 
-# Fallback for any other /api/* routes
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/not-found"
