@@ -2,6 +2,7 @@ const { corsHeaders, checkUserRole, initializeSupabase } = require('./utils');
 
 exports.handler = async function(event, context) {
   console.log('Handling auth request:', event.path, event.httpMethod);
+  console.log('Raw event.path:', event.path); // Debug: Log raw path
 
   // Initialize Supabase client
   let supabase;
@@ -31,9 +32,12 @@ exports.handler = async function(event, context) {
       .replace(/^\/api\/api\/?/, '/api/')
       .replace(/^\/+/, '/')
       .replace(/\/+$/, '');
-    console.log('Normalized path:', path);
+    console.log('Normalized path:', path); // Debug: Log normalized path
 
-    // Route: POST /api/signup
+    // Debug: Log before route checks
+    console.log('Checking routes for path:', path, 'method:', event.httpMethod);
+
+    // Route: POST /api/auth/signup
     if (path === '/api/signup' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signup request');
       const { email, password, name } = JSON.parse(event.body || '{}');
@@ -90,7 +94,7 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Route: POST /api/signin
+    // Route: POST /api/auth/signin
     if (path === '/api/signin' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signin request');
       const { email, password } = JSON.parse(event.body || '{}');
