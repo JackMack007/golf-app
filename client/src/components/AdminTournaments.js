@@ -4,11 +4,15 @@ import { UserContext } from '../context/UserContext';
 const AdminTournaments = () => {
   const { user, error: contextError } = useContext(UserContext);
   const [tournaments, setTournaments] = useState([]);
+  const [users, setUsers] = useState([]); // New state for users
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false); // New state for assign modal
   const [editingTournament, setEditingTournament] = useState(null);
+  const [assigningTournament, setAssigningTournament] = useState(null); // New state for the tournament being assigned users
+  const [selectedUserId, setSelectedUserId] = useState(''); // New state for selected user
   const [formData, setFormData] = useState({
     name: '',
     start_date: '',
@@ -38,6 +42,7 @@ const AdminTournaments = () => {
     }
 
     fetchTournaments();
+    fetchUsers(); // Fetch users when component mounts
   }, [user, contextError]);
 
   const fetchTournaments = async () => {
@@ -71,6 +76,35 @@ const AdminTournaments = () => {
       console.error('GET /api/tournaments fetch error:', err);
       setError('Failed to fetch tournaments');
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/users', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('GET /api/users response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch users');
+      }
+
+      setUsers(data || []);
+    } catch (err) {
+      console.error('GET /api/users fetch error:', err);
+      setError('Failed to fetch users: ' + err.message);
     }
   };
 
@@ -108,10 +142,20 @@ const AdminTournaments = () => {
     setIsEditModalOpen(true);
   };
 
+  const openAssignModal = (tournament) => {
+    console.log('Opening assign modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
+    setAssigningTournament(tournament);
+    setSelectedUserId(''); // Reset selected user
+    setIsAssignModalOpen(true);
+  };
+
   const closeModal = () => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
+    setIsAssignModalOpen(false);
     setEditingTournament(null);
+    setAssigningTournament(null);
+    setSelectedUserId('');
     setFormData({
       name: '',
       start_date: '',
@@ -122,6 +166,10 @@ const AdminTournaments = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleUserSelectChange = (e) => {
+    setSelectedUserId(e.target.value);
   };
 
   const handleCreate = async () => {
@@ -248,6 +296,47 @@ const AdminTournaments = () => {
     }
   };
 
+  const handleAssignUser = async () => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      closeModal();
+      return;
+    }
+
+    if (!selectedUserId) {
+      alert('Please select a user to assign.');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tournament_id: assigningTournament.tournament_id,
+          user_id: selectedUserId,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('POST /api/tournament-participants response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to assign user to tournament');
+      }
+
+      alert('User assigned to tournament successfully!');
+      closeModal();
+    } catch (err) {
+      console.error('Error assigning user to tournament:', err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   if (contextError) {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
@@ -304,10 +393,16 @@ const AdminTournaments = () => {
                         Edit
                       </button>
                       <button
-                        className="text-red-500 hover:underline"
+                        className="text-red-500 hover:underline mr-2"
                         onClick={() => handleDelete(tournament.tournament_id)}
                       >
                         Delete
+                      </button>
+                      <button
+                        className="text-blue-500 hover:underline"
+                        onClick={() => openAssignModal(tournament)}
+                      >
+                        Assign Users
                       </button>
                     </td>
                   </tr>
@@ -335,6 +430,12 @@ const AdminTournaments = () => {
                     onClick={() => handleDelete(tournament.tournament_id)}
                   >
                     Delete
+                  </button>
+                  <button
+                    className="text-blue-500 hover:underline"
+                    onClick={() => openAssignModal(tournament)}
+                  >
+                    Assign Users
                   </button>
                 </div>
               </div>
@@ -445,6 +546,46 @@ const AdminTournaments = () => {
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Users Modal */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">
+              Assign Users to {assigningTournament?.name}
+            </h2>
+            <div className="mb-4">
+              <label className="block text-gray-700">Select User</label>
+              <select
+                value={selectedUserId}
+                onChange={handleUserSelectChange}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">-- Select a user --</option>
+                {users.map(user => (
+                  <option key={user.user_id} value={user.user_id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={closeModal}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignUser}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Assign
               </button>
             </div>
           </div>
