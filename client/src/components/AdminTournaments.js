@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
+import { Link } from 'react-router-dom'; // Import Link for navigation to user profile
 
 const AdminTournaments = () => {
   const { user, error: contextError } = useContext(UserContext);
   const [tournaments, setTournaments] = useState([]);
-  const [users, setUsers] = useState([]); // New state for users
+  const [users, setUsers] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [participants, setParticipants] = useState([]); // New state for assigned participants
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false); // New state for assign modal
+  const [isAssignUserModalOpen, setIsAssignUserModalOpen] = useState(false);
+  const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
-  const [assigningTournament, setAssigningTournament] = useState(null); // New state for the tournament being assigned users
-  const [selectedUserId, setSelectedUserId] = useState(''); // New state for selected user
+  const [assigningTournament, setAssigningTournament] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [playDate, setPlayDate] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     start_date: '',
@@ -42,7 +48,8 @@ const AdminTournaments = () => {
     }
 
     fetchTournaments();
-    fetchUsers(); // Fetch users when component mounts
+    fetchUsers();
+    fetchCourses();
   }, [user, contextError]);
 
   const fetchTournaments = async () => {
@@ -108,6 +115,64 @@ const AdminTournaments = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/courses', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('GET /api/courses response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch courses');
+      }
+
+      setCourses(data || []);
+    } catch (err) {
+      console.error('GET /api/courses fetch error:', err);
+      setError('Failed to fetch courses: ' + err.message);
+    }
+  };
+
+  const fetchParticipants = async (tournamentId) => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants/${tournamentId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log(`GET /api/tournament-participants/${tournamentId} response data:`, data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch participants');
+      }
+
+      setParticipants(data.participants || []);
+    } catch (err) {
+      console.error(`GET /api/tournament-participants/${tournamentId} fetch error:`, err);
+      setError('Failed to fetch participants: ' + err.message);
+    }
+  };
+
   const calculateStatus = (startDate, endDate) => {
     const currentDate = new Date('2025-05-09');
     const start = new Date(startDate);
@@ -142,20 +207,33 @@ const AdminTournaments = () => {
     setIsEditModalOpen(true);
   };
 
-  const openAssignModal = (tournament) => {
-    console.log('Opening assign modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
+  const openAssignUserModal = (tournament) => {
+    console.log('Opening participants modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
     setAssigningTournament(tournament);
-    setSelectedUserId(''); // Reset selected user
-    setIsAssignModalOpen(true);
+    setSelectedUserId('');
+    fetchParticipants(tournament.tournament_id); // Fetch participants for this tournament
+    setIsAssignUserModalOpen(true);
+  };
+
+  const openAssignCourseModal = (tournament) => {
+    console.log('Opening assign course modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
+    setAssigningTournament(tournament);
+    setSelectedCourseId('');
+    setPlayDate('');
+    setIsAssignCourseModalOpen(true);
   };
 
   const closeModal = () => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
-    setIsAssignModalOpen(false);
+    setIsAssignUserModalOpen(false);
+    setIsAssignCourseModalOpen(false);
     setEditingTournament(null);
     setAssigningTournament(null);
     setSelectedUserId('');
+    setSelectedCourseId('');
+    setPlayDate('');
+    setParticipants([]);
     setFormData({
       name: '',
       start_date: '',
@@ -170,6 +248,14 @@ const AdminTournaments = () => {
 
   const handleUserSelectChange = (e) => {
     setSelectedUserId(e.target.value);
+  };
+
+  const handleCourseSelectChange = (e) => {
+    setSelectedCourseId(e.target.value);
+  };
+
+  const handlePlayDateChange = (e) => {
+    setPlayDate(e.target.value);
   };
 
   const handleCreate = async () => {
@@ -309,6 +395,13 @@ const AdminTournaments = () => {
       return;
     }
 
+    // Check if the user is already assigned to the tournament
+    const isUserAssigned = participants.some(participant => participant.user_id === selectedUserId);
+    if (isUserAssigned) {
+      alert('This user is already assigned to the tournament.');
+      return;
+    }
+
     try {
       const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants', {
         method: 'POST',
@@ -329,10 +422,94 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to assign user to tournament');
       }
 
+      // Refresh the participants list after adding
+      await fetchParticipants(assigningTournament.tournament_id);
+      setSelectedUserId(''); // Reset the dropdown
       alert('User assigned to tournament successfully!');
-      closeModal();
     } catch (err) {
       console.error('Error assigning user to tournament:', err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteParticipant = async (participantId) => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to remove this participant from the tournament?');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants/${participantId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('DELETE /api/tournament-participants/:id response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete participant');
+      }
+
+      // Refresh the participants list after deletion
+      await fetchParticipants(assigningTournament.tournament_id);
+      alert('Participant removed successfully!');
+    } catch (err) {
+      console.error('Error deleting participant:', err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAssignCourse = async () => {
+    const session = JSON.parse(localStorage.getItem('session'));
+    if (!session || !session.access_token) {
+      setError('No valid session token found');
+      closeModal();
+      return;
+    }
+
+    if (!selectedCourseId) {
+      alert('Please select a course to assign.');
+      return;
+    }
+
+    if (!playDate || !/^\d{4}-\d{2}-\d{2}$/.test(playDate)) {
+      alert('Please select a valid play date (YYYY-MM-DD).');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-courses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tournament_id: assigningTournament.tournament_id,
+          course_id: selectedCourseId,
+          play_date: playDate,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('POST /api/tournament-courses response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to assign course to tournament');
+      }
+
+      alert('Course assigned to tournament successfully!');
+      closeModal();
+    } catch (err) {
+      console.error('Error assigning course to tournament:', err);
       alert(`Error: ${err.message}`);
     }
   };
@@ -399,10 +576,16 @@ const AdminTournaments = () => {
                         Delete
                       </button>
                       <button
-                        className="text-blue-500 hover:underline"
-                        onClick={() => openAssignModal(tournament)}
+                        className="text-blue-500 hover:underline mr-2"
+                        onClick={() => openAssignUserModal(tournament)}
                       >
-                        Assign Users
+                        Participants
+                      </button>
+                      <button
+                        className="text-purple-500 hover:underline"
+                        onClick={() => openAssignCourseModal(tournament)}
+                      >
+                        Assign Courses
                       </button>
                     </td>
                   </tr>
@@ -433,9 +616,15 @@ const AdminTournaments = () => {
                   </button>
                   <button
                     className="text-blue-500 hover:underline"
-                    onClick={() => openAssignModal(tournament)}
+                    onClick={() => openAssignUserModal(tournament)}
                   >
-                    Assign Users
+                    Participants
+                  </button>
+                  <button
+                    className="text-purple-500 hover:underline"
+                    onClick={() => openAssignCourseModal(tournament)}
+                  >
+                    Assign Courses
                   </button>
                 </div>
               </div>
@@ -552,14 +741,53 @@ const AdminTournaments = () => {
         </div>
       )}
 
-      {/* Assign Users Modal */}
-      {isAssignModalOpen && (
+      {/* Participants Modal */}
+      {isAssignUserModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">
-              Assign Users to {assigningTournament?.name}
+              Participants for {assigningTournament?.name}
             </h2>
+
+            {/* List of Assigned Participants */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">Assigned Participants</h3>
+              {participants.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {participants.map(participant => (
+                    <div
+                      key={participant.id}
+                      className="flex justify-between items-center border-b py-2"
+                    >
+                      <span>
+                        {participant.users?.name} ({participant.users?.email})
+                      </span>
+                      <div className="space-x-2">
+                        <Link
+                          to={`/admin/users/${participant.user_id}`}
+                          className="text-green-500 hover:underline"
+                          onClick={() => closeModal()} // Close modal when navigating
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          className="text-red-500 hover:underline"
+                          onClick={() => handleDeleteParticipant(participant.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No participants assigned yet.</p>
+              )}
+            </div>
+
+            {/* Add Participant Section */}
             <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-2">Add Participant</h3>
               <label className="block text-gray-700">Select User</label>
               <select
                 value={selectedUserId}
@@ -567,12 +795,63 @@ const AdminTournaments = () => {
                 className="w-full p-2 border rounded"
               >
                 <option value="">-- Select a user --</option>
-                {users.map(user => (
-                  <option key={user.user_id} value={user.user_id}>
-                    {user.name} ({user.email})
+                {users
+                  .filter(user => !participants.some(p => p.user_id === user.user_id)) // Exclude already assigned users
+                  .map(user => (
+                    <option key={user.user_id} value={user.user_id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={closeModal}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleAssignUser}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Add Participant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Courses Modal */}
+      {isAssignCourseModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">
+              Assign Courses to {assigningTournament?.name}
+            </h2>
+            <div className="mb-4">
+              <label className="block text-gray-700">Select Course</label>
+              <select
+                value={selectedCourseId}
+                onChange={handleCourseSelectChange}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">-- Select a course --</option>
+                {courses.map(course => (
+                  <option key={course.course_id} value={course.course_id}>
+                    {course.name} ({course.location})
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700">Play Date</label>
+              <input
+                type="date"
+                value={playDate}
+                onChange={handlePlayDateChange}
+                className="w-full p-2 border rounded"
+              />
             </div>
             <div className="flex justify-end space-x-2">
               <button
@@ -582,7 +861,7 @@ const AdminTournaments = () => {
                 Cancel
               </button>
               <button
-                onClick={handleAssignUser}
+                onClick={handleAssignCourse}
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Assign
