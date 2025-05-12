@@ -6,18 +6,12 @@
 [functions]
   directory = "../functions"
   node_bundler = "esbuild"
-  external_node_modules = ["dotenv"]
 
 [build.environment]
   NODE_VERSION = "22"
 
 [[redirects]]
-  from = "/api/auth/signin"
-  to = "/.netlify/functions/auth"
-  status = 200
-
-[[redirects]]
-  from = "/api/auth/signup"
+  from = "/api/auth/*"
   to = "/.netlify/functions/auth"
   status = 200
 
