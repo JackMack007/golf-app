@@ -7,6 +7,8 @@ const usersRoutes = async (event, supabase) => {
     .replace(/^\/+/, '/')
     .replace(/\/+$/, '');
   console.log('Normalized path in usersRoutes:', path);
+  console.log('HTTP method:', event.httpMethod);
+  console.log('Headers in usersRoutes:', event.headers);
 
   const token = event.headers['authorization']?.split(' ')[1];
   console.log('Authorization token:', token);
@@ -22,7 +24,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: No token provided' })
       };
     }
-
     let userRole;
     let userId;
     try {
@@ -47,7 +48,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
       };
     }
-
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -56,7 +56,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Admin access required' })
       };
     }
-
     console.log('Fetching all users from Supabase');
     const { data, error } = await supabase
       .from('users')
@@ -90,7 +89,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: No token provided' })
       };
     }
-
     let userRole;
     try {
       userRole = await checkUserRole(token, supabase);
@@ -102,7 +100,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
       };
     }
-
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -111,7 +108,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Admin access required' })
       };
     }
-
     const { data, error } = await supabase
       .from('users')
       .select('user_id, email, name, handicap')
@@ -139,7 +135,6 @@ const usersRoutes = async (event, supabase) => {
     console.log('Handling /api/users/:id PUT request, userId:', userId);
     const { name, email, handicap } = JSON.parse(event.body || '{}');
     console.log('PUT /api/users/:id body:', { name, email, handicap });
-
     if (!name || !email || handicap === undefined) {
       console.log('Missing required fields: name, email, or handicap');
       return {
@@ -148,7 +143,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'name, email, and handicap are required' })
       };
     }
-
     const parsedHandicap = parseFloat(handicap);
     if (isNaN(parsedHandicap) || parsedHandicap < 0) {
       console.log('Invalid handicap value:', handicap);
@@ -158,7 +152,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'handicap must be a non-negative number' })
       };
     }
-
     if (!token) {
       console.error('No authorization token provided');
       return {
@@ -167,7 +160,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: No token provided' })
       };
     }
-
     let userRole;
     try {
       userRole = await checkUserRole(token, supabase);
@@ -180,7 +172,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
       };
     }
-
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -189,7 +180,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Admin access required' })
       };
     }
-
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
       .select('user_id')
@@ -203,7 +193,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'User not found' })
       };
     }
-
     const { data, error } = await supabase
       .from('users')
       .update({ name, email, handicap: parsedHandicap })
@@ -237,7 +226,6 @@ const usersRoutes = async (event, supabase) => {
   if (path.startsWith('/api/users/') && event.httpMethod === 'DELETE') {
     const userId = path.split('/')[3];
     console.log('Handling /api/users/:id DELETE request, userId:', userId);
-
     if (!token) {
       console.error('No authorization token provided');
       return {
@@ -246,7 +234,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: No token provided' })
       };
     }
-
     let userRole;
     try {
       userRole = await checkUserRole(token, supabase);
@@ -259,7 +246,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
       };
     }
-
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -268,7 +254,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Admin access required' })
       };
     }
-
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('user_id, auth_user_id')
@@ -282,7 +267,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'User not found' })
       };
     }
-
     const { data: associatedScores, error: scoreError } = await supabase
       .from('scores')
       .select('score_id')
@@ -303,7 +287,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Cannot delete user with associated scores' })
       };
     }
-
     const { error: deleteError } = await supabase
       .from('users')
       .delete()
@@ -316,13 +299,11 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: deleteError.message })
       };
     }
-
     const { error: authError } = await supabase.auth.admin.deleteUser(userData.auth_user_id);
     if (authError) {
       console.error('Auth user deletion error:', authError.message);
       console.warn('Proceeding despite auth deletion error; user already removed from users table');
     }
-
     console.log('User deleted:', userId);
     return {
       statusCode: 200,
@@ -353,12 +334,10 @@ const usersRoutes = async (event, supabase) => {
     }
     const userId = sessionData.user.id;
     console.log('Fetching profile for userId:', userId);
-
     const { data, error } = await supabase
       .from('users')
       .select('name, email, handicap, user_role')
       .eq('auth_user_id', userId);
-
     if (error) {
       console.error('User retrieval error:', error.message);
       return {
@@ -367,7 +346,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: error.message })
       };
     }
-
     if (!data || data.length === 0) {
       console.error('No user found for auth_user_id:', userId);
       return {
@@ -376,7 +354,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'User not found' })
       };
     }
-
     if (data.length > 1) {
       console.error('Multiple users found for auth_user_id:', userId);
       return {
@@ -385,7 +362,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Multiple users found for this auth_user_id' })
       };
     }
-
     const userData = data[0];
     console.log('User retrieved:', userData);
     return {
@@ -423,7 +399,6 @@ const usersRoutes = async (event, supabase) => {
       };
     }
     const userId = sessionData.user.id;
-
     const { data: currentUser, error: fetchError } = await supabase
       .from('users')
       .select('name, email, handicap, user_role')
@@ -437,13 +412,11 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'User not found' })
       };
     }
-
     const updatedData = {
       name: name !== undefined && name !== '' ? name : currentUser.name,
       email: email !== undefined && email !== '' ? email : currentUser.email,
       handicap: handicap !== undefined ? parseFloat(handicap) : currentUser.handicap
     };
-
     const { data, error } = await supabase
       .from('users')
       .update(updatedData)

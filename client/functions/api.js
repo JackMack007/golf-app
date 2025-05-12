@@ -10,6 +10,7 @@ const notFoundRoutes = require('./routes/not-found');
 exports.handler = async function(event, context) {
   console.log('Handling API request:', event.path, event.httpMethod);
   console.log('Raw event.path:', event.path);
+  console.log('Event headers:', event.headers);
 
   // Initialize Supabase client
   let supabase;
@@ -39,7 +40,7 @@ exports.handler = async function(event, context) {
       .replace(/^\/api\/api\/?/, '/api/')
       .replace(/^\/+/, '/')
       .replace(/\/+$/, '');
-    console.log('Normalized path:', path);
+    console.log('Normalized path in api.js:', path);
 
     // Route to appropriate handler based on path
     if (path.startsWith('/api/auth')) {
