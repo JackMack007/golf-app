@@ -1,6 +1,6 @@
 [build]
   base = "client"
-  command = "cd ../functions && npm install && cp -r node_modules ../client/ && cd ../client && npm run build"
+  command = "cd ../functions && npm install && cd ../client && npm run build"
   publish = "build"
 
 [functions]
@@ -11,8 +11,8 @@
   NODE_VERSION = "22"
 
 [[redirects]]
-  from = "/api/auth/*"
-  to = "/.netlify/functions/auth"
+  from = "/api/auth/:splat"
+  to = "/.netlify/functions/auth/:splat"
   status = 200
 
 [[redirects]]
