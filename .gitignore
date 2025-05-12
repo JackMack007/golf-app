@@ -1,7 +1,7 @@
 node_modules/
 server/.env
 server/test.js
-client/.env
 client/build
 .env
 .vercel
+client/.env
