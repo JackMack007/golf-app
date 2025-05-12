@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for programmatic navigation
+import { useNavigate } from 'react-router-dom';
 
 const AdminTournaments = () => {
   const { user, error: contextError } = useContext(UserContext);
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [participants, setParticipants] = useState([]);
-  const [assignedCourses, setAssignedCourses] = useState([]); // New state for assigned courses
+  const [assignedCourses, setAssignedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -21,7 +21,7 @@ const AdminTournaments = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [playDate, setPlayDate] = useState('');
-  const [editingCourseAssignment, setEditingCourseAssignment] = useState(null); // State for editing a course assignment
+  const [editingCourseAssignment, setEditingCourseAssignment] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     start_date: '',
@@ -36,7 +36,7 @@ const AdminTournaments = () => {
     }
 
     if (user === null) {
-      return; // Wait for user data to load
+      return;
     }
 
     if (!user) {
@@ -252,7 +252,7 @@ const AdminTournaments = () => {
     setAssigningTournament(tournament);
     setSelectedCourseId('');
     setPlayDate('');
-    setEditingCourseAssignment(null); // Reset editing state
+    setEditingCourseAssignment(null);
     fetchAssignedCourses(tournament.tournament_id);
     setIsAssignCourseModalOpen(true);
   };
@@ -458,7 +458,6 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to assign user to tournament');
       }
 
-      // Refresh the participants list after adding
       await fetchParticipants(assigningTournament.tournament_id);
       setSelectedUserId('');
       alert('User assigned to tournament successfully!');
@@ -494,7 +493,6 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to delete participant');
       }
 
-      // Refresh the participants list after deletion
       await fetchParticipants(assigningTournament.tournament_id);
       alert('Participant removed successfully!');
     } catch (err) {
@@ -542,7 +540,6 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to assign course to tournament');
       }
 
-      // Refresh the assigned courses list after adding
       await fetchAssignedCourses(assigningTournament.tournament_id);
       setSelectedCourseId('');
       setPlayDate('');
@@ -591,7 +588,6 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to update course assignment');
       }
 
-      // Refresh the assigned courses list after updating
       await fetchAssignedCourses(assigningTournament.tournament_id);
       setEditingCourseAssignment(null);
       setSelectedCourseId('');
@@ -629,7 +625,6 @@ const AdminTournaments = () => {
         throw new Error(data.error || 'Failed to delete course assignment');
       }
 
-      // Refresh the assigned courses list after deletion
       await fetchAssignedCourses(assigningTournament.tournament_id);
       alert('Course assignment removed successfully!');
     } catch (err) {
@@ -1085,7 +1080,7 @@ const AdminTournaments = () => {
                 value={selectedCourseId}
                 onChange={handleCourseSelectChange}
                 className="w-full p-2 border rounded"
-                disabled={!!editingCourseAssignment} // Disable course selection when editing
+                disabled={!!editingCourseAssignment}
               >
                 <option value="">-- Select a course --</option>
                 {courses.map(course => (
