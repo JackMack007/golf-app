@@ -8,7 +8,7 @@
   context = "preBuild"
 
 [functions]
-  directory = "functions"
+  directory = "../functions"
   node_bundler = "esbuild"
 
 [build.environment]
