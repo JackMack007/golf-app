@@ -1,10 +1,34 @@
 [build]
-  command = "cd client/functions && npm install && cd ../ && npm run build"
-  publish = "client/build"
+  base = "client"
+  command = "cd functions && npm install && cd .. && npm run build"
+  publish = "build"
 
 [functions]
-  directory = "client/functions"
+  directory = "functions"
   node_bundler = "esbuild"
 
 [build.environment]
   NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/api/auth/signin"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/test"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
