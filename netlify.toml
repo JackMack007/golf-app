@@ -1,9 +1,10 @@
 [build]
-  command = "cd client/functions && npm install && cd ../ && npm run build"
-  publish = "client/build"
+  base = "client"
+  command = "cd functions && npm install && cd .. && npm run build"
+  publish = "build"
 
 [functions]
-  directory = "client/functions"
+  directory = "functions"
   node_bundler = "esbuild"
 
 [build.environment]
