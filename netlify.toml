@@ -1,11 +1,7 @@
 [build]
   base = "client"
-  command = "npm run build"
+  command = "cd ../functions && npm install && cd ../client && npm run build"
   publish = "build"
-
-[[build.commands]]
-  command = "cd ../functions && npm install"
-  context = "preBuild"
 
 [functions]
   directory = "../functions"
