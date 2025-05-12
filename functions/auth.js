@@ -2,7 +2,7 @@ const { corsHeaders, checkUserRole, initializeSupabase } = require('./utils');
 
 exports.handler = async function(event, context) {
   console.log('Handling auth request:', event.path, event.httpMethod);
-  console.log('Raw event.path:', event.path); // Debug: Log raw path
+  console.log('Raw event.path:', event.path);
 
   // Initialize Supabase client
   let supabase;
@@ -28,106 +28,52 @@ exports.handler = async function(event, context) {
 
   try {
     const path = event.path
-      .replace(/^\/\.netlify\/functions\/auth\/?/, '/api/auth/')
+      .replace(/^\/\.netlify\/functions\/auth\/?/, '/api/auth')
       .replace(/^\/api\/api\/?/, '/api/')
       .replace(/^\/+/, '/')
       .replace(/\/+$/, '');
-    console.log('Normalized path:', path); // Debug: Log normalized path
-
-    // Debug: Log before route checks
+    console.log('Normalized path:', path);
     console.log('Checking routes for path:', path, 'method:', event.httpMethod);
 
-    // Route: POST /api/auth/signup
-    if (path === '/api/auth/signup' && event.httpMethod === 'POST') {
-      console.log('Handling /api/auth/signup request');
-      const { email, password, name } = JSON.parse(event.body || '{}');
-      if (!email || !password) {
-        console.log('Missing email or password');
+    // Route: POST /api/auth (signup action)
+    if (path === '/api/auth' && event.httpMethod === 'POST') {
+      const { email, password, name, action } = JSON.parse(event.body || '{}');
+      if (!action) {
+        console.log('Missing action in request body');
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Email and password are required' })
+          body: JSON.stringify({ error: 'Action is required (signin or signup)' })
         };
       }
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        console.error('Signup error:', error.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: error.message })
-        };
-      }
-      // Create a record in the users table
-      const userId = data.user.id;
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-          user_id: userId,
-          auth_user_id: userId,
-          name: name || '',
-          email: email,
-          handicap: 0,
-          created_at: new Date().toISOString(),
-          user_role: 'user'
-        })
-        .select()
-        .single();
-      if (userError) {
-        console.error('User creation error:', userError.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Failed to create user: ' + userError.message })
-        };
-      }
-      console.log('Signup successful:', data.user.id);
-      const userResponse = {
-        id: data.user.id,
-        email: data.user.email,
-        role: userData.user_role
-      };
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({ user: userResponse })
-      };
-    }
 
-    // Route: POST /api/auth/signin
-    if (path === '/api/auth/signin' && event.httpMethod === 'POST') {
-      console.log('Handling /api/auth/signin request');
-      const { email, password } = JSON.parse(event.body || '{}');
-      if (!email || !password) {
-        console.log('Missing email or password');
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Email and password are required' })
-        };
-      }
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        console.error('Signin error:', error.message);
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: error.message })
-        };
-      }
-      const userId = data.user.id;
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('user_id, auth_user_id, name, email, handicap, created_at, user_role')
-        .eq('auth_user_id', userId)
-        .single();
-      if (userError || !userData) {
-        const { data: newUserData, error: insertError } = await supabase
+      if (action === 'signup') {
+        console.log('Handling /api/auth signup request');
+        if (!email || !password) {
+          console.log('Missing email or password');
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Email and password are required' })
+          };
+        }
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          console.error('Signup error:', error.message);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: error.message })
+          };
+        }
+        // Create a record in the users table
+        const userId = data.user.id;
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .insert({
             user_id: userId,
             auth_user_id: userId,
-            name: '',
+            name: name || '',
             email: email,
             handicap: 0,
             created_at: new Date().toISOString(),
@@ -135,12 +81,85 @@ exports.handler = async function(event, context) {
           })
           .select()
           .single();
-        if (insertError) {
-          console.error('User creation error on signin:', insertError.message);
+        if (userError) {
+          console.error('User creation error:', userError.message);
           return {
             statusCode: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Failed to create user: ' + insertError.message })
+            body: JSON.stringify({ error: 'Failed to create user: ' + userError.message })
+          };
+        }
+        console.log('Signup successful:', data.user.id);
+        const userResponse = {
+          id: data.user.id,
+          email: data.user.email,
+          role: userData.user_role
+        };
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ user: userResponse })
+        };
+      }
+
+      if (action === 'signin') {
+        console.log('Handling /api/auth signin request');
+        if (!email || !password) {
+          console.log('Missing email or password');
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Email and password are required' })
+          };
+        }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          console.error('Signin error:', error.message);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: error.message })
+          };
+        }
+        const userId = data.user.id;
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('user_id, auth_user_id, name, email, handicap, created_at, user_role')
+          .eq('auth_user_id', userId)
+          .single();
+        if (userError || !userData) {
+          const { data: newUserData, error: insertError } = await supabase
+            .from('users')
+            .insert({
+              user_id: userId,
+              auth_user_id: userId,
+              name: '',
+              email: email,
+              handicap: 0,
+              created_at: new Date().toISOString(),
+              user_role: 'user'
+            })
+            .select()
+            .single();
+          if (insertError) {
+            console.error('User creation error on signin:', insertError.message);
+            return {
+              statusCode: 400,
+              headers: corsHeaders,
+              body: JSON.stringify({ error: 'Failed to create user: ' + insertError.message })
+            };
+          }
+          console.log('Signin successful:', data.user.id);
+          console.log('Session data:', data.session);
+          const userResponse = {
+            id: data.user.id,
+            email: data.user.email,
+            role: newUserData.user_role
+          };
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ user: userResponse, session: data.session })
           };
         }
         console.log('Signin successful:', data.user.id);
@@ -148,7 +167,7 @@ exports.handler = async function(event, context) {
         const userResponse = {
           id: data.user.id,
           email: data.user.email,
-          role: newUserData.user_role
+          role: userData.user_role
         };
         return {
           statusCode: 200,
@@ -156,17 +175,12 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ user: userResponse, session: data.session })
         };
       }
-      console.log('Signin successful:', data.user.id);
-      console.log('Session data:', data.session);
-      const userResponse = {
-        id: data.user.id,
-        email: data.user.email,
-        role: userData.user_role
-      };
+
+      console.log('Invalid action:', action);
       return {
-        statusCode: 200,
+        statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ user: userResponse, session: data.session })
+        body: JSON.stringify({ error: 'Invalid action: must be signin or signup' })
       };
     }
 
@@ -185,4 +199,4 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({ error: 'Internal Server Error: ' + error.message })
     };
   }
-}; 
+};
