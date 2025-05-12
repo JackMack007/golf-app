@@ -1,6 +1,6 @@
-const { corsHeaders } = require('./utils');
+const { corsHeaders } = require('../utils');
 
-exports.handler = async function(event, context) {
+const notFoundRoutes = async (event) => {
   console.log('Handling not-found request:', event.path, event.httpMethod);
   return {
     statusCode: 404,
@@ -8,3 +8,5 @@ exports.handler = async function(event, context) {
     body: JSON.stringify({ error: 'Not Found' })
   };
 };
+
+module.exports = notFoundRoutes;

@@ -11,52 +11,7 @@
   NODE_VERSION = "22"
 
 [[redirects]]
-  from = "/api/auth"
-  to = "/.netlify/functions/auth"
+  from = "/api/*"
+  to = "/.netlify/functions/api"
   status = 200
   force = true
-
-[[redirects]]
-  from = "/api/scores/:splat"
-  to = "/.netlify/functions/scores"
-  status = 200
-
-[[redirects]]
-  from = "/api/users/:splat"
-  to = "/.netlify/functions/users"
-  status = 200
-
-[[redirects]]
-  from = "/api/profile"
-  to = "/.netlify/functions/users"
-  status = 200
-
-[[redirects]]
-  from = "/api/courses/:splat"
-  to = "/.netlify/functions/courses"
-  status = 200
-
-[[redirects]]
-  from = "/api/tournaments/:splat"
-  to = "/.netlify/functions/tournaments"
-  status = 200
-
-[[redirects]]
-  from = "/api/tournament-participants/:splat"
-  to = "/.netlify/functions/tournaments"
-  status = 200
-
-[[redirects]]
-  from = "/api/tournament-courses/:splat"
-  to = "/.netlify/functions/tournaments"
-  status = 200
-
-[[redirects]]
-  from = "/api/leaderboards"
-  to = "/.netlify/functions/leaderboards"
-  status = 200
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/not-found"
-  status = 404
