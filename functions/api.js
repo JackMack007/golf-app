@@ -48,7 +48,7 @@ exports.handler = async function(event, context) {
     if (path.startsWith('/api/scores')) {
       return await scoresRoutes(event, supabase);
     }
-    if (path.startsWith('/api/users') || path === '/api/profile')) {
+    if (path.startsWith('/api/users') || path === '/api/profile') {
       return await usersRoutes(event, supabase);
     }
     if (path.startsWith('/api/courses')) {
