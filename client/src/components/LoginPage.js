@@ -19,7 +19,7 @@ const LoginPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, action: 'signin' }),
+        body: JSON.stringify({ email, password }), // Removed action field
       });
 
       const data = await response.json();
