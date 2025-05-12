@@ -28,7 +28,7 @@ exports.handler = async function(event, context) {
 
   try {
     const path = event.path
-      .replace(/^\/\.netlify\/functions\/auth\/?/, '/api/')
+      .replace(/^\/\.netlify\/functions\/auth\/?/, '/api/auth/')
       .replace(/^\/api\/api\/?/, '/api/')
       .replace(/^\/+/, '/')
       .replace(/\/+$/, '');
@@ -38,7 +38,7 @@ exports.handler = async function(event, context) {
     console.log('Checking routes for path:', path, 'method:', event.httpMethod);
 
     // Route: POST /api/auth/signup
-    if (path === '/api/signup' && event.httpMethod === 'POST') {
+    if (path === '/api/auth/signup' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signup request');
       const { email, password, name } = JSON.parse(event.body || '{}');
       if (!email || !password) {
@@ -95,7 +95,7 @@ exports.handler = async function(event, context) {
     }
 
     // Route: POST /api/auth/signin
-    if (path === '/api/signin' && event.httpMethod === 'POST') {
+    if (path === '/api/auth/signin' && event.httpMethod === 'POST') {
       console.log('Handling /api/auth/signin request');
       const { email, password } = JSON.parse(event.body || '{}');
       if (!email || !password) {
@@ -185,4 +185,4 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({ error: 'Internal Server Error: ' + error.message })
     };
   }
-};
+}; 
