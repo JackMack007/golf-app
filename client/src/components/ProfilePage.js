@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { getProfile, updateProfile } from '../services/api';
+import { UserContext } from '../context/UserContext';
 
 function ProfilePage() {
+  const { user, refreshUser } = useContext(UserContext);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -9,36 +11,43 @@ function ProfilePage() {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const session = JSON.parse(localStorage.getItem('session'));
-        if (!session || !session.access_token) {
-          throw new Error('No session found. Please log in.');
-        }
+        setLoading(true);
         const response = await getProfile();
         setFormData({
           name: response.data.name || '',
           email: response.data.email || '',
           handicap: response.data.handicap || 0
         });
+        setLoading(false);
       } catch (err) {
         setError(err.response?.data?.error || err.message);
+        setLoading(false);
       }
     };
-    fetchProfile();
-  }, []);
+
+    // Pre-fill form with user data from context if available
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        handicap: user.handicap || 0
+      });
+      setLoading(false);
+    } else {
+      fetchProfile();
+    }
+  }, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     try {
-      const session = JSON.parse(localStorage.getItem('session'));
-      if (!session || !session.access_token) {
-        throw new Error('No session found. Please log in.');
-      }
       const response = await updateProfile(formData.name, formData.email, parseFloat(formData.handicap));
       setSuccess('Profile updated successfully!');
       setFormData({
@@ -46,6 +55,8 @@ function ProfilePage() {
         email: response.data.email || '',
         handicap: response.data.handicap || 0
       });
+      // Refresh user context after update
+      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || err.message);
     }
@@ -58,6 +69,16 @@ function ProfilePage() {
       [name]: value
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
