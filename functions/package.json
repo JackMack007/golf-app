@@ -1,0 +1,16 @@
+{
+  "name": "golf-app-functions",
+  "version": "1.0.0",
+  "description": "Backend functions for golf app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
