@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env' });
 
 // CORS headers to allow requests from the frontend
 const corsHeaders = {
@@ -42,6 +41,9 @@ const checkUserRole = async (token, supabase) => {
 const initializeSupabase = () => {
   try {
     console.log('Initializing Supabase client with URL:', process.env.SUPABASE_URL);
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
+      throw new Error('Supabase URL and key are required');
+    }
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
     console.log('Supabase client initialized successfully');
     return supabase;
