@@ -1,4 +1,4 @@
-const { corsHeaders, checkUserRole, initializeSupabase } = require('./utils');
+const { corsHeaders, checkUserRole, initializeSupabase } = require('./routes/utils');
 const authRoutes = require('./routes/auth');
 const scoresRoutes = require('./routes/scores');
 const usersRoutes = require('./routes/users');
@@ -48,7 +48,7 @@ exports.handler = async function(event, context) {
     if (path.startsWith('/api/scores')) {
       return await scoresRoutes(event, supabase);
     }
-    if (path.startsWith('/api/users') || path === '/api/profile') {
+    if (path.startsWith('/api/users') || path === '/api/profile')) {
       return await usersRoutes(event, supabase);
     }
     if (path.startsWith('/api/courses')) {

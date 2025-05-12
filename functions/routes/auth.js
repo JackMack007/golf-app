@@ -1,4 +1,4 @@
-const { corsHeaders } = require('../utils');
+const { corsHeaders } = require('./utils');
 
 const authRoutes = async (event, supabase) => {
   const path = event.path

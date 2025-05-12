@@ -1,4 +1,4 @@
-const { corsHeaders } = require('../utils');
+const { corsHeaders } = require('./utils');
 
 const notFoundRoutes = async (event) => {
   console.log('Handling not-found request:', event.path, event.httpMethod);

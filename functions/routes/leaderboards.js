@@ -1,4 +1,4 @@
-const { corsHeaders } = require('../utils');
+const { corsHeaders } = require('./utils');
 
 const leaderboardsRoutes = async (event, supabase) => {
   const path = event.path

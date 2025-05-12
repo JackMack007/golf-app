@@ -1,4 +1,4 @@
-const { corsHeaders, checkUserRole } = require('../utils');
+const { corsHeaders, checkUserRole } = require('./utils');
 
 const scoresRoutes = async (event, supabase) => {
   const path = event.path
