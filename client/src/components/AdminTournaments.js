@@ -653,8 +653,8 @@ const AdminTournaments = () => {
     <div className="container mx-auto p-4">
       {/* Debug Element to Test Tailwind Responsive Classes */}
       <div className="mb-4">
-        <p className="hidden md:block text-green-500">This should be visible on PC (≥768px)</p>
-        <p className="block md:hidden text-red-500">This should be visible on Mobile (<768px)</p>
+        <p className="hidden md:block text-green-500">This should be visible on PC (\u2265768px)</p>
+        <p className="block md:hidden text-red-500">This should be visible on Mobile (\u003C768px)</p>
       </div>
 
       <h1 className="text-2xl font-bold mb-4">Admin: Manage Tournaments</h1>
@@ -995,8 +995,8 @@ const AdminTournaments = () => {
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             {/* Debug Element Inside Modal */}
             <div className="mb-4">
-              <p className="hidden md:block text-green-500">Modal: Table should be visible on PC (≥768px)</p>
-              <p className="block md:hidden text-red-500">Modal: Tiles should be visible on Mobile (<768px)</p>
+              <p className="hidden md:block text-green-500">Modal: Table should be visible on PC (\u2265768px)</p>
+              <p className="block md:hidden text-red-500">Modal: Tiles should be visible on Mobile (\u003C768px)</p>
             </div>
 
             <h2 className="text-xl font-bold mb-4">
