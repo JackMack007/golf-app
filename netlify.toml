@@ -11,6 +11,12 @@
   NODE_VERSION = "22"
 
 [[redirects]]
+  from = "/api/auth/signin"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"
   status = 200
