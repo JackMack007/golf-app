@@ -651,6 +651,12 @@ const AdminTournaments = () => {
 
   return (
     <div className="container mx-auto p-4">
+      {/* Debug Element to Test Tailwind Responsive Classes */}
+      <div className="mb-4">
+        <p className="hidden md:block text-green-500">This should be visible on PC (≥768px)</p>
+        <p className="block md:hidden text-red-500">This should be visible on Mobile (<768px)</p>
+      </div>
+
       <h1 className="text-2xl font-bold mb-4">Admin: Manage Tournaments</h1>
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500 mb-4">{error}</p>}
@@ -987,6 +993,12 @@ const AdminTournaments = () => {
       {isAssignCourseModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            {/* Debug Element Inside Modal */}
+            <div className="mb-4">
+              <p className="hidden md:block text-green-500">Modal: Table should be visible on PC (≥768px)</p>
+              <p className="block md:hidden text-red-500">Modal: Tiles should be visible on Mobile (<768px)</p>
+            </div>
+
             <h2 className="text-xl font-bold mb-4">
               Courses for {assigningTournament?.name}
             </h2>
@@ -997,7 +1009,7 @@ const AdminTournaments = () => {
               {assignedCourses.length > 0 ? (
                 <>
                   {/* Table layout for medium and larger screens */}
-                  <div className="hidden md:block">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full border-collapse border">
                       <thead>
                         <tr className="bg-gray-200">
@@ -1037,7 +1049,7 @@ const AdminTournaments = () => {
                     {assignedCourses.map(courseAssignment => (
                       <div
                         key={courseAssignment.id}
-                        className="border-b py-2"
+                        className="bg-gray-50 p-4 rounded shadow"
                       >
                         <div className="flex justify-between items-center">
                           <span>
