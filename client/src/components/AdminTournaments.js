@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
+import TournamentParticipantsModal from './TournamentParticipantsModal';
+import TournamentCoursesModal from './TournamentCoursesModal';
+import TournamentScoresModal from './TournamentScoresModal';
+import TournamentLeaderboardsModal from './TournamentLeaderboardsModal';
 
 const AdminTournaments = () => {
   const { user, error: contextError } = useContext(UserContext);
@@ -16,12 +20,10 @@ const AdminTournaments = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAssignUserModalOpen, setIsAssignUserModalOpen] = useState(false);
   const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
+  const [isScoresModalOpen, setIsScoresModalOpen] = useState(false);
+  const [isLeaderboardsModalOpen, setIsLeaderboardsModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
   const [assigningTournament, setAssigningTournament] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [playDate, setPlayDate] = useState('');
-  const [editingCourseAssignment, setEditingCourseAssignment] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     start_date: '',
@@ -242,19 +244,25 @@ const AdminTournaments = () => {
   const openAssignUserModal = (tournament) => {
     console.log('Opening participants modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
     setAssigningTournament(tournament);
-    setSelectedUserId('');
-    fetchParticipants(tournament.tournament_id);
     setIsAssignUserModalOpen(true);
   };
 
   const openAssignCourseModal = (tournament) => {
     console.log('Opening courses modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
     setAssigningTournament(tournament);
-    setSelectedCourseId('');
-    setPlayDate('');
-    setEditingCourseAssignment(null);
-    fetchAssignedCourses(tournament.tournament_id);
     setIsAssignCourseModalOpen(true);
+  };
+
+  const openScoresModal = (tournament) => {
+    console.log('Opening scores modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
+    setAssigningTournament(tournament);
+    setIsScoresModalOpen(true);
+  };
+
+  const openLeaderboardsModal = (tournament) => {
+    console.log('Opening leaderboards modal for tournament:', { id: tournament.tournament_id, name: tournament.name });
+    setAssigningTournament(tournament);
+    setIsLeaderboardsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -262,14 +270,12 @@ const AdminTournaments = () => {
     setIsEditModalOpen(false);
     setIsAssignUserModalOpen(false);
     setIsAssignCourseModalOpen(false);
+    setIsScoresModalOpen(false);
+    setIsLeaderboardsModalOpen(false);
     setEditingTournament(null);
     setAssigningTournament(null);
-    setSelectedUserId('');
-    setSelectedCourseId('');
-    setPlayDate('');
     setParticipants([]);
     setAssignedCourses([]);
-    setEditingCourseAssignment(null);
     setFormData({
       name: '',
       start_date: '',
@@ -280,18 +286,6 @@ const AdminTournaments = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleUserSelectChange = (e) => {
-    setSelectedUserId(e.target.value);
-  };
-
-  const handleCourseSelectChange = (e) => {
-    setSelectedCourseId(e.target.value);
-  };
-
-  const handlePlayDateChange = (e) => {
-    setPlayDate(e.target.value);
   };
 
   const handleCreate = async () => {
@@ -418,221 +412,6 @@ const AdminTournaments = () => {
     }
   };
 
-  const handleAssignUser = async () => {
-    const session = JSON.parse(localStorage.getItem('session'));
-    if (!session || !session.access_token) {
-      setError('No valid session token found');
-      closeModal();
-      return;
-    }
-
-    if (!selectedUserId) {
-      alert('Please select a user to assign.');
-      return;
-    }
-
-    // Check if the user is already assigned to the tournament
-    const isUserAssigned = participants.some(participant => participant.user_id === selectedUserId);
-    if (isUserAssigned) {
-      alert('This user is already assigned to the tournament.');
-      return;
-    }
-
-    try {
-      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tournament_id: assigningTournament.tournament_id,
-          user_id: selectedUserId,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('POST /api/tournament-participants response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to assign user to tournament');
-      }
-
-      await fetchParticipants(assigningTournament.tournament_id);
-      setSelectedUserId('');
-      alert('User assigned to tournament successfully!');
-    } catch (err) {
-      console.error('Error assigning user to tournament:', err);
-      alert(`Error: ${err.message}`);
-    }
-  };
-
-  const handleDeleteParticipant = async (participantId) => {
-    const session = JSON.parse(localStorage.getItem('session'));
-    if (!session || !session.access_token) {
-      setError('No valid session token found');
-      return;
-    }
-
-    const confirmed = window.confirm('Are you sure you want to remove this participant from the tournament?');
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-participants/${participantId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      console.log('DELETE /api/tournament-participants/:id response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete participant');
-      }
-
-      await fetchParticipants(assigningTournament.tournament_id);
-      alert('Participant removed successfully!');
-    } catch (err) {
-      console.error('Error deleting participant:', err);
-      alert(`Error: ${err.message}`);
-    }
-  };
-
-  const handleAssignCourse = async () => {
-    const session = JSON.parse(localStorage.getItem('session'));
-    if (!session || !session.access_token) {
-      setError('No valid session token found');
-      closeModal();
-      return;
-    }
-
-    if (!selectedCourseId) {
-      alert('Please select a course to assign.');
-      return;
-    }
-
-    if (!playDate || !/^\d{4}-\d{2}-\d{2}$/.test(playDate)) {
-      alert('Please select a valid play date (YYYY-MM-DD).');
-      return;
-    }
-
-    try {
-      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-courses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tournament_id: assigningTournament.tournament_id,
-          course_id: selectedCourseId,
-          play_date: playDate,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('POST /api/tournament-courses response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to assign course to tournament');
-      }
-
-      await fetchAssignedCourses(assigningTournament.tournament_id);
-      setSelectedCourseId('');
-      setPlayDate('');
-      alert('Course assigned to tournament successfully!');
-    } catch (err) {
-      console.error('Error assigning course to tournament:', err);
-      alert(`Error: ${err.message}`);
-    }
-  };
-
-  const handleEditCourseAssignment = (courseAssignment) => {
-    setEditingCourseAssignment(courseAssignment);
-    setSelectedCourseId(courseAssignment.course_id);
-    setPlayDate(courseAssignment.play_date);
-  };
-
-  const handleUpdateCourseAssignment = async () => {
-    const session = JSON.parse(localStorage.getItem('session'));
-    if (!session || !session.access_token) {
-      setError('No valid session token found');
-      closeModal();
-      return;
-    }
-
-    if (!playDate || !/^\d{4}-\d{2}-\d{2}$/.test(playDate)) {
-      alert('Please select a valid play date (YYYY-MM-DD).');
-      return;
-    }
-
-    try {
-      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-courses/${editingCourseAssignment.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          play_date: playDate,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('PUT /api/tournament-courses/:id response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update course assignment');
-      }
-
-      await fetchAssignedCourses(assigningTournament.tournament_id);
-      setEditingCourseAssignment(null);
-      setSelectedCourseId('');
-      setPlayDate('');
-      alert('Course assignment updated successfully!');
-    } catch (err) {
-      console.error('Error updating course assignment:', err);
-      alert(`Error: ${err.message}`);
-    }
-  };
-
-  const handleDeleteCourseAssignment = async (courseAssignmentId) => {
-    const session = JSON.parse(localStorage.getItem('session'));
-    if (!session || !session.access_token) {
-      setError('No valid session token found');
-      return;
-    }
-
-    const confirmed = window.confirm('Are you sure you want to remove this course from the tournament?');
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch(`https://golf-app-backend.netlify.app/.netlify/functions/api/tournament-courses/${courseAssignmentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      console.log('DELETE /api/tournament-courses/:id response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete course assignment');
-      }
-
-      await fetchAssignedCourses(assigningTournament.tournament_id);
-      alert('Course assignment removed successfully!');
-    } catch (err) {
-      console.error('Error deleting course assignment:', err);
-      alert(`Error: ${err.message}`);
-    }
-  };
-
   if (contextError) {
     return <div className="container mx-auto p-4">Error: {contextError}</div>;
   }
@@ -651,12 +430,6 @@ const AdminTournaments = () => {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Debug Element to Test Tailwind Responsive Classes */}
-      <div className="mb-4">
-        <p className="hidden md:block text-green-500">This should be visible on PC (\u2265768px)</p>
-        <p className="block md:hidden text-red-500">This should be visible on Mobile (\u003C768px)</p>
-      </div>
-
       <h1 className="text-2xl font-bold mb-4">Admin: Manage Tournaments</h1>
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500 mb-4">{error}</p>}
@@ -707,10 +480,22 @@ const AdminTournaments = () => {
                         Participants
                       </button>
                       <button
-                        className="text-purple-500 hover:underline"
+                        className="text-purple-500 hover:underline mr-2"
                         onClick={() => openAssignCourseModal(tournament)}
                       >
                         Courses
+                      </button>
+                      <button
+                        className="text-orange-500 hover:underline mr-2"
+                        onClick={() => openScoresModal(tournament)}
+                      >
+                        Scores
+                      </button>
+                      <button
+                        className="text-teal-500 hover:underline"
+                        onClick={() => openLeaderboardsModal(tournament)}
+                      >
+                        Leaderboards
                       </button>
                     </td>
                   </tr>
@@ -750,6 +535,18 @@ const AdminTournaments = () => {
                     onClick={() => openAssignCourseModal(tournament)}
                   >
                     Courses
+                  </button>
+                  <button
+                    className="text-orange-500 hover:underline"
+                    onClick={() => openScoresModal(tournament)}
+                  >
+                    Scores
+                  </button>
+                  <button
+                    className="text-teal-500 hover:underline"
+                    onClick={() => openLeaderboardsModal(tournament)}
+                  >
+                    Leaderboards
                   </button>
                 </div>
               </div>
@@ -867,276 +664,40 @@ const AdminTournaments = () => {
       )}
 
       {/* Participants Modal */}
-      {isAssignUserModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              Participants for {assigningTournament?.name}
-            </h2>
-
-            {/* List of Assigned Participants */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">Assigned Participants</h3>
-              {participants.length > 0 ? (
-                <>
-                  {/* Table layout for medium and larger screens */}
-                  <div className="hidden md:block">
-                    <table className="w-full border-collapse border">
-                      <thead>
-                        <tr className="bg-gray-200">
-                          <th className="border p-2">Name</th>
-                          <th className="border p-2">Email</th>
-                          <th className="border p-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {participants.map(participant => (
-                          <tr key={participant.id}>
-                            <td className="border p-2">{participant.users?.name}</td>
-                            <td className="border p-2">{participant.users?.email}</td>
-                            <td className="border p-2">
-                              <button
-                                className="text-green-500 hover:underline mr-2"
-                                onClick={() => {
-                                  closeModal();
-                                  navigate(`/admin/users/${participant.user_id}`);
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="text-red-500 hover:underline"
-                                onClick={() => handleDeleteParticipant(participant.id)}
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* Tile layout for small screens */}
-                  <div className="block md:hidden space-y-2 max-h-48 overflow-y-auto">
-                    {participants.map(participant => (
-                      <div
-                        key={participant.id}
-                        className="flex justify-between items-center border-b py-2"
-                      >
-                        <span>
-                          {participant.users?.name} ({participant.users?.email})
-                        </span>
-                        <div className="space-x-2">
-                          <button
-                            className="text-green-500 hover:underline"
-                            onClick={() => {
-                              closeModal();
-                              navigate(`/admin/users/${participant.user_id}`);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-red-500 hover:underline"
-                            onClick={() => handleDeleteParticipant(participant.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-gray-500">No participants assigned yet.</p>
-              )}
-            </div>
-
-            {/* Add Participant Section */}
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Add Participant</h3>
-              <label className="block text-gray-700">Select User</label>
-              <select
-                value={selectedUserId}
-                onChange={handleUserSelectChange}
-                className="w-full p-2 border rounded"
-              >
-                <option value="">-- Select a user --</option>
-                {users
-                  .filter(user => !participants.some(p => p.user_id === user.user_id))
-                  .map(user => (
-                    <option key={user.user_id} value={user.user_id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={closeModal}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleAssignUser}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Add Participant
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TournamentParticipantsModal
+        tournament={assigningTournament}
+        users={users}
+        isOpen={isAssignUserModalOpen}
+        onClose={closeModal}
+        fetchParticipants={fetchParticipants}
+        participants={participants}
+        setParticipants={setParticipants}
+      />
 
       {/* Courses Modal */}
-      {isAssignCourseModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            {/* Debug Element Inside Modal */}
-            <div className="mb-4">
-              <p className="hidden md:block text-green-500">Modal: Table should be visible on PC (\u2265768px)</p>
-              <p className="block md:hidden text-red-500">Modal: Tiles should be visible on Mobile (\u003C768px)</p>
-            </div>
+      <TournamentCoursesModal
+        tournament={assigningTournament}
+        courses={courses}
+        isOpen={isAssignCourseModalOpen}
+        onClose={closeModal}
+        fetchAssignedCourses={fetchAssignedCourses}
+        assignedCourses={assignedCourses}
+        setAssignedCourses={setAssignedCourses}
+      />
 
-            <h2 className="text-xl font-bold mb-4">
-              Courses for {assigningTournament?.name}
-            </h2>
+      {/* Scores Modal */}
+      <TournamentScoresModal
+        tournament={assigningTournament}
+        isOpen={isScoresModalOpen}
+        onClose={closeModal}
+      />
 
-            {/* List of Assigned Courses */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">Assigned Courses</h3>
-              {assignedCourses.length > 0 ? (
-                <>
-                  {/* Table layout for medium and larger screens */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full border-collapse border">
-                      <thead>
-                        <tr className="bg-gray-200">
-                          <th className="border p-2">Course Name</th>
-                          <th className="border p-2">Location</th>
-                          <th className="border p-2">Play Date</th>
-                          <th className="border p-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {assignedCourses.map(courseAssignment => (
-                          <tr key={courseAssignment.id}>
-                            <td className="border p-2">{courseAssignment.courses?.name}</td>
-                            <td className="border p-2">{courseAssignment.courses?.location}</td>
-                            <td className="border p-2">{courseAssignment.play_date}</td>
-                            <td className="border p-2">
-                              <button
-                                className="text-green-500 hover:underline mr-2"
-                                onClick={() => handleEditCourseAssignment(courseAssignment)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="text-red-500 hover:underline"
-                                onClick={() => handleDeleteCourseAssignment(courseAssignment.id)}
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* Tile layout for small screens */}
-                  <div className="block md:hidden space-y-2 max-h-48 overflow-y-auto">
-                    {assignedCourses.map(courseAssignment => (
-                      <div
-                        key={courseAssignment.id}
-                        className="bg-gray-50 p-4 rounded shadow"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span>
-                            {courseAssignment.courses?.name} ({courseAssignment.courses?.location})
-                          </span>
-                          <div className="space-x-2">
-                            <button
-                              className="text-green-500 hover:underline"
-                              onClick={() => handleEditCourseAssignment(courseAssignment)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="text-red-500 hover:underline"
-                              onClick={() => handleDeleteCourseAssignment(courseAssignment.id)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Play Date: {courseAssignment.play_date}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-gray-500">No courses assigned yet.</p>
-              )}
-            </div>
-
-            {/* Add/Edit Course Section */}
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">
-                {editingCourseAssignment ? 'Edit Course Assignment' : 'Add Course'}
-              </h3>
-              <label className="block text-gray-700">Select Course</label>
-              <select
-                value={selectedCourseId}
-                onChange={handleCourseSelectChange}
-                className="w-full p-2 border rounded"
-                disabled={!!editingCourseAssignment}
-              >
-                <option value="">-- Select a course --</option>
-                {courses.map(course => (
-                  <option key={course.course_id} value={course.course_id}>
-                    {course.name} ({course.location})
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2">
-                <label className="block text-gray-700">Play Date</label>
-                <input
-                  type="date"
-                  value={playDate}
-                  onChange={handlePlayDateChange}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={closeModal}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Close
-              </button>
-              {editingCourseAssignment ? (
-                <button
-                  onClick={handleUpdateCourseAssignment}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Update
-                </button>
-              ) : (
-                <button
-                  onClick={handleAssignCourse}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Add Course
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Leaderboards Modal */}
+      <TournamentLeaderboardsModal
+        tournament={assigningTournament}
+        isOpen={isLeaderboardsModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 };
