@@ -14,7 +14,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/signin', {
+      const response = await fetch('/api/auth', { // Changed from '/api/auth/signin' to '/api/auth'
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

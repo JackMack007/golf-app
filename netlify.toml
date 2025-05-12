@@ -11,12 +11,6 @@
   NODE_VERSION = "22"
 
 [[redirects]]
-  from = "/api/auth/*"
-  to = "/.netlify/functions/auth"
-  status = 200
-  force = true
-
-[[redirects]]
   from = "/api/scores/:splat"
   to = "/.netlify/functions/scores"
   status = 200
