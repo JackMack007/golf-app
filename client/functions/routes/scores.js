@@ -33,18 +33,18 @@ const scoresRoutes = async (event, supabase) => {
   }
 
   const userId = sessionData.user.id;
-  let userRole = 'user'; // Default role
+  let userRole = 'user';
   try {
     userRole = await checkUserRole(token, supabase);
+    console.log('User role after checkUserRole:', userRole);
   } catch (error) {
     console.error('Role check error, defaulting to user role:', error.message);
-    userRole = 'user'; // Default to 'user' if role check fails
+    userRole = 'user';
   }
 
   // Route: GET /api/scores
   if (path === '/api/scores' && event.httpMethod === 'GET') {
-    console.log('Handling /api/scores GET request');
-    console.log('Fetching scores for user:', userId);
+    console.log('Handling /api/scores GET request for user:', userId);
     const { data, error } = await supabase
       .from('scores')
       .select('score_id, user_id, tournament_id, course_id, score_value, date_played, notes')
@@ -68,8 +68,7 @@ const scoresRoutes = async (event, supabase) => {
   // Route: GET /api/tournament-scores/:tournamentId
   if (path.startsWith('/api/tournament-scores/') && event.httpMethod === 'GET') {
     const tournamentId = path.split('/')[3];
-    console.log('Handling /api/tournament-scores/:tournamentId GET request, tournamentId:', tournamentId);
-    console.log('Fetching tournament scores for user:', userId, 'tournamentId:', tournamentId);
+    console.log('Handling /api/tournament-scores/:tournamentId GET request, tournamentId:', tournamentId, 'userId:', userId);
     const { data, error } = await supabase
       .from('scores')
       .select('score_id, user_id, tournament_id, course_id, score_value, date_played, notes')
@@ -92,19 +91,21 @@ const scoresRoutes = async (event, supabase) => {
 
   // Route: POST /api/scores
   if (path === '/api/scores' && event.httpMethod === 'POST') {
-    console.log('Handling /api/scores POST request');
+    console.log('Handling /api/scores POST request for user:', userId);
+    console.log('Token used for POST /api/scores:', token);
     const body = JSON.parse(event.body || '{}');
-    const { userId, score, course, date_played, notes, tournament_id } = body;
+    const { userId: submittedUserId, score, course, date_played, notes, tournament_id } = body;
     console.log('POST /api/scores body:', body);
-    if (!userId || !score || !course || !date_played) {
-      console.log('Missing required fields: userId, score, course, date_played');
+    console.log('Comparing submittedUserId:', submittedUserId, 'with auth.uid():', userId);
+    if (!score || !course || !date_played) {
+      console.log('Missing required fields: score, course, date_played');
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'userId, score, course, and date_played are required' })
+        body: JSON.stringify({ error: 'score, course, and date_played are required' })
       };
     }
-    if (userId !== userId && userRole !== 'admin') {
+    if (submittedUserId && submittedUserId !== userId && userRole !== 'admin') {
       console.log('User not authorized to submit score for another user');
       return {
         statusCode: 403,
@@ -112,16 +113,18 @@ const scoresRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Forbidden: Cannot submit score for another user' })
       };
     }
+    const insertData = {
+      user_id: userId, // Use auth.uid() directly, ignoring submittedUserId
+      course_id: course,
+      score_value: score,
+      date_played,
+      notes,
+      tournament_id: tournament_id || null
+    };
+    console.log('Inserting score with data:', insertData);
     const { data, error } = await supabase
       .from('scores')
-      .insert({
-        user_id: userId,
-        course_id: course,
-        score_value: score,
-        date_played,
-        notes,
-        tournament_id: tournament_id || null
-      })
+      .insert(insertData)
       .select()
       .single();
     if (error) {
@@ -143,7 +146,7 @@ const scoresRoutes = async (event, supabase) => {
   // Route: PUT /api/scores/:scoreId
   if (path.startsWith('/api/scores/') && event.httpMethod === 'PUT') {
     const scoreId = path.split('/')[3];
-    console.log('Handling /api/scores/:scoreId PUT request, scoreId:', scoreId);
+    console.log('Handling /api/scores/:scoreId PUT request, scoreId:', scoreId, 'userId:', userId);
     const body = JSON.parse(event.body || '{}');
     const { course, score_value, date_played, notes } = body;
     console.log('PUT /api/scores/:scoreId body:', body);
@@ -206,7 +209,7 @@ const scoresRoutes = async (event, supabase) => {
   // Route: DELETE /api/scores/:scoreId
   if (path.startsWith('/api/scores/') && event.httpMethod === 'DELETE') {
     const scoreId = path.split('/')[3];
-    console.log('Handling /api/scores/:scoreId DELETE request, scoreId:', scoreId);
+    console.log('Handling /api/scores/:scoreId DELETE request, scoreId:', scoreId, 'userId:', userId);
     const { data: scoreData, error: fetchError } = await supabase
       .from('scores')
       .select('user_id')

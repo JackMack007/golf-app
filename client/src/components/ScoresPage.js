@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCourses, getScores, submitScore, updateScore, deleteScore } from '../services/api';
+import { getCourses, getScores, submitScore, updateScore, deleteScore, getProfile } from '../services/api';
 
 function ScoresPage() {
   const [scores, setScores] = useState([]);
@@ -13,25 +13,39 @@ function ScoresPage() {
   const [editScoreId, setEditScoreId] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('ScoresPage - Starting fetchData');
         const session = JSON.parse(localStorage.getItem('session'));
+        console.log('ScoresPage - Session:', session);
         if (!session || !session.access_token) {
           throw new Error('No session found. Please log in.');
         }
+        console.log('Fetching profile with token:', session.access_token);
+
+        // Fetch the authenticated user's ID
+        const profileResponse = await getProfile();
+        console.log('ScoresPage - Profile response:', profileResponse);
+        if (!profileResponse.data || !profileResponse.data.user_id) {
+          throw new Error('Failed to fetch user profile');
+        }
+        setCurrentUserId(profileResponse.data.user_id);
+        console.log('ScoresPage - Current user ID:', profileResponse.data.user_id);
 
         // Fetch courses
         const coursesResponse = await getCourses();
-        console.log('Courses response:', coursesResponse);
+        console.log('ScoresPage - Courses response:', coursesResponse);
         setCourses(Array.isArray(coursesResponse.data) ? coursesResponse.data : []);
 
         // Fetch scores
         const scoresResponse = await getScores();
-        console.log('Scores response:', scoresResponse);
+        console.log('ScoresPage - Scores response:', scoresResponse);
         setScores(Array.isArray(scoresResponse.data.scores) ? scoresResponse.data.scores : []);
       } catch (err) {
+        console.error('ScoresPage - fetchData error:', err.message);
         setError(err.response?.data?.error || err.message);
       }
     };
@@ -43,17 +57,23 @@ function ScoresPage() {
     setError(null);
     setSuccess(null);
     try {
+      console.log('ScoresPage - Starting handleSubmit');
       const session = JSON.parse(localStorage.getItem('session'));
+      console.log('ScoresPage - Session for handleSubmit:', session);
       if (!session || !session.access_token) {
         throw new Error('No session found. Please log in.');
+      }
+      if (!currentUserId) {
+        throw new Error('User ID not loaded. Please try again.');
       }
       if (!formData.course || !formData.score_value || !formData.date_played || !/^\d{4}-\d{2}-\d{2}$/.test(formData.date_played)) {
         throw new Error('Course, score, and a valid date played (YYYY-MM-DD) are required');
       }
-      console.log('Submitting formData:', formData, 'editScoreId:', editScoreId);
+      console.log('ScoresPage - Submitting formData:', formData, 'editScoreId:', editScoreId, 'currentUserId:', currentUserId);
+      console.log('ScoresPage - Token used for submitScore:', session.access_token);
       let response;
       if (editScoreId) {
-        console.log('Updating score with ID:', editScoreId);
+        console.log('ScoresPage - Updating score with ID:', editScoreId);
         response = await updateScore(editScoreId, {
           course: formData.course,
           score_value: formData.score_value,
@@ -64,13 +84,13 @@ function ScoresPage() {
         setEditScoreId(null);
         setSuccess('Score updated successfully!');
       } else {
-        console.log('Creating new score for user:', session.user.id);
-        response = await submitScore(session.user.id, {
+        console.log('ScoresPage - Creating new score');
+        response = await submitScore({
           score: parseInt(formData.score_value),
           course: formData.course,
           date_played: formData.date_played,
           notes: formData.notes,
-          tournament_id: null // Individual score, no tournament
+          tournament_id: null
         });
         setScores([...scores, response.data.score]);
         setSuccess('Score created successfully!');
@@ -82,11 +102,13 @@ function ScoresPage() {
         notes: ''
       });
     } catch (err) {
+      console.error('ScoresPage - handleSubmit error:', err.message);
       setError(err.response?.data?.error || err.message);
     }
   };
 
   const handleEdit = (score) => {
+    console.log('ScoresPage - handleEdit called with score:', score);
     const datePlayed = score.date_played && /^\d{4}-\d{2}-\d{2}$/.test(score.date_played) ? score.date_played : new Date().toISOString().split('T')[0];
     setFormData({
       course: score.course_id || score.course || '',
@@ -101,6 +123,7 @@ function ScoresPage() {
     setError(null);
     setSuccess(null);
     try {
+      console.log('ScoresPage - handleDelete called with scoreId:', scoreId);
       const session = JSON.parse(localStorage.getItem('session'));
       if (!session || !session.access_token) {
         throw new Error('No session found. Please log in.');
@@ -109,11 +132,13 @@ function ScoresPage() {
       setScores(scores.filter(score => score.score_id !== scoreId));
       setSuccess('Score deleted successfully!');
     } catch (err) {
+      console.error('ScoresPage - handleDelete error:', err.message);
       setError(err.response?.data?.error || err.message);
     }
   };
 
   const handleChange = (e) => {
+    console.log('ScoresPage - handleChange called with event:', e.target.name, e.target.value);
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -190,6 +215,7 @@ function ScoresPage() {
           <button
             type="submit"
             className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+            disabled={!currentUserId}
           >
             {editScoreId ? 'Update Score' : 'Create Score'}
           </button>
