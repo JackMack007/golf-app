@@ -336,7 +336,7 @@ const usersRoutes = async (event, supabase) => {
     console.log('Fetching profile for userId:', userId);
     const { data, error } = await supabase
       .from('users')
-      .select('name, email, handicap, user_role')
+      .select('auth_user_id, name, email, handicap, user_role')
       .eq('auth_user_id', userId);
     if (error) {
       console.error('User retrieval error:', error.message);
@@ -368,6 +368,7 @@ const usersRoutes = async (event, supabase) => {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
+        user_id: userData.auth_user_id, // Add user_id to the response
         name: userData.name || '',
         email: userData.email,
         handicap: userData.handicap || 0,
@@ -401,7 +402,7 @@ const usersRoutes = async (event, supabase) => {
     const userId = sessionData.user.id;
     const { data: currentUser, error: fetchError } = await supabase
       .from('users')
-      .select('name, email, handicap, user_role')
+      .select('auth_user_id, name, email, handicap, user_role')
       .eq('auth_user_id', userId)
       .single();
     if (fetchError || !currentUser) {
@@ -436,6 +437,7 @@ const usersRoutes = async (event, supabase) => {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
+        user_id: data.auth_user_id, // Add user_id to the response
         name: data.name || '',
         email: data.email,
         handicap: data.handicap || 0,
