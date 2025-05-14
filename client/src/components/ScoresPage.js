@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCourses, getScores, submitScore, updateScore, deleteScore } from '../services/api';
 
-// Added comment to force Git to recognize a change - 2025-05-07
 function ScoresPage() {
   const [scores, setScores] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -12,7 +11,7 @@ function ScoresPage() {
     notes: ''
   });
   const [editScoreId, setEditScoreId] = useState(null);
-  const [error, setAltair] = useState(null);
+  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
@@ -33,7 +32,7 @@ function ScoresPage() {
         console.log('Scores response:', scoresResponse);
         setScores(Array.isArray(scoresResponse.data.scores) ? scoresResponse.data.scores : []);
       } catch (err) {
-        setAltair(err.response?.data?.error || err.message);
+        setError(err.response?.data?.error || err.message);
       }
     };
     fetchData();
@@ -41,7 +40,7 @@ function ScoresPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setAltair(null);
+    setError(null);
     setSuccess(null);
     try {
       const session = JSON.parse(localStorage.getItem('session'));
@@ -70,7 +69,8 @@ function ScoresPage() {
           score: parseInt(formData.score_value),
           course: formData.course,
           date_played: formData.date_played,
-          notes: formData.notes
+          notes: formData.notes,
+          tournament_id: null // Individual score, no tournament
         });
         setScores([...scores, response.data.score]);
         setSuccess('Score created successfully!');
@@ -82,7 +82,7 @@ function ScoresPage() {
         notes: ''
       });
     } catch (err) {
-      setAltair(err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || err.message);
     }
   };
 
@@ -98,7 +98,7 @@ function ScoresPage() {
   };
 
   const handleDelete = async (scoreId) => {
-    setAltair(null);
+    setError(null);
     setSuccess(null);
     try {
       const session = JSON.parse(localStorage.getItem('session'));
@@ -109,7 +109,7 @@ function ScoresPage() {
       setScores(scores.filter(score => score.score_id !== scoreId));
       setSuccess('Score deleted successfully!');
     } catch (err) {
-      setAltair(err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || err.message);
     }
   };
 
@@ -226,6 +226,7 @@ function ScoresPage() {
                     </h4>
                     <p><strong>Score:</strong> {score.score_value}</p>
                     <p><strong>Date Played:</strong> {score.date_played}</p>
+                    <p><strong>Tournament:</strong> {score.tournament_id ? `Tournament ID: ${score.tournament_id}` : 'Individual Round'}</p>
                     <p><strong>Notes:</strong> {score.notes || 'None'}</p>
                   </div>
                   <div className="flex space-x-2">

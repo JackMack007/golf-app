@@ -33,6 +33,8 @@ export const deleteCourse = (courseId) => api.delete(`/api/courses/${courseId}`)
 
 export const getScores = () => api.get('/api/scores');
 
+export const getTournamentScores = (tournamentId) => api.get(`/api/tournament-scores/${tournamentId}`);
+
 export const submitScore = (userId, scoreData) => api.post('/api/scores', { userId, ...scoreData });
 
 export const updateScore = (scoreId, formData) => api.put(`/api/scores/${scoreId}`, formData);

@@ -7,89 +7,15 @@ const scoresRoutes = async (event, supabase) => {
     .replace(/^\/+/, '/')
     .replace(/\/+$/, '');
   console.log('Normalized path in scoresRoutes:', path);
+  console.log('HTTP method:', event.httpMethod);
+  console.log('Headers in scoresRoutes:', event.headers);
 
   const token = event.headers['authorization']?.split(' ')[1];
   console.log('Authorization token:', token);
 
-  // Route: POST /api/scores
-  if (path === '/api/scores' && event.httpMethod === 'POST') {
-    console.log('Handling /api/scores request');
-    const { userId, score, course, date_played, notes } = JSON.parse(event.body || '{}');
-    console.log('POST /api/scores body:', { userId, score, course, date_played, notes });
-    if (!userId || !score || !course || !date_played || !/^\d{4}-\d{2}-\d{2}$/.test(date_played)) {
-      console.log('Missing or invalid userId, score, course, or date_played');
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'userId, score, course, and a valid date_played (YYYY-MM-DD) are required' })
-      };
-    }
-    const { data, error } = await supabase
-      .from('scores')
-      .insert([{ user_id: userId, score_value: score, course_id: course, date_played, notes }])
-      .select();
-    if (error) {
-      console.error('Score submission error:', error.message);
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: error.message })
-      };
-    }
-    if (!data || data.length === 0) {
-      console.error('Score insertion returned no data');
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Failed to retrieve inserted score' })
-      };
-    }
-    console.log('Score submitted:', data);
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ score: data[0] })
-    };
-  }
-
   // Route: GET /api/scores
   if (path === '/api/scores' && event.httpMethod === 'GET') {
-    console.log('Handling /api/scores request');
-    const { data, error } = await supabase
-      .from('scores')
-      .select('*');
-    if (error) {
-      console.error('Score retrieval error:', error.message);
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: error.message })
-      };
-    }
-    console.log('Scores retrieved:', data.length);
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ scores: data })
-    };
-  }
-
-  // Route: PUT /api/scores/:id
-  if (path.startsWith('/api/scores/') && event.httpMethod === 'PUT') {
-    const scoreId = path.split('/')[3];
-    console.log('Handling /api/scores/:id PUT request, scoreId:', scoreId);
-    const { course, score_value, date_played, notes } = JSON.parse(event.body || '{}');
-    console.log('PUT /api/scores/:id body:', { course, score_value, date_played, notes });
-
-    if (!course || !score_value || !date_played || !/^\d{4}-\d{2}-\d{2}$/.test(date_played)) {
-      console.log('Missing or invalid course, score_value, or date_played');
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'course, score_value, and a valid date_played (YYYY-MM-DD) are required' })
-      };
-    }
-
+    console.log('Handling /api/scores GET request');
     if (!token) {
       console.error('No authorization token provided');
       return {
@@ -98,83 +24,214 @@ const scoresRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'Unauthorized: No token provided' })
       };
     }
-
-    let userRole;
-    let userId;
-    try {
-      userRole = await checkUserRole(token, supabase);
-      console.log('User role retrieved:', userRole);
-      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-      if (sessionError || !sessionData?.user) {
-        console.error('Session error:', sessionError?.message);
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-        };
-      }
-      userId = sessionData.user.id;
-      console.log('Authenticated userId:', userId);
-    } catch (error) {
-      console.error('Role check error:', error.message);
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !sessionData?.user) {
+      console.error('Session error:', sessionError?.message);
       return {
         statusCode: 401,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
       };
     }
-
-    let scoreData;
-    if (userRole !== 'admin') {
-      console.log('Checking score ownership for user:', userId);
-      const { data, error: scoreError } = await supabase
-        .from('scores')
-        .select('user_id')
-        .eq('score_id', scoreId)
-        .single();
-      if (scoreError || !data) {
-        console.error('Score not found during ownership check:', scoreError?.message);
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Score not found' })
-        };
-      }
-      console.log('Score ownership check - Score user_id:', data.user_id);
-      if (data.user_id !== userId) {
-        console.log('User not authorized to edit this score:', { userId, scoreUserId: data.user_id });
-        return {
-          statusCode: 403,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Forbidden: You can only edit your own scores' })
-        };
-      }
-      scoreData = data;
-    } else {
-      const { data, error: scoreError } = await supabase
-        .from('scores')
-        .select('user_id')
-        .eq('score_id', scoreId)
-        .single();
-      if (scoreError || !data) {
-        console.error('Score not found for admin:', scoreError?.message);
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Score not found' })
-        };
-      }
-      scoreData = data;
-    }
-
-    console.log('Updating score for user:', userId, 'with role:', userRole);
+    const userId = sessionData.user.id;
+    console.log('Fetching scores for user:', userId);
     const { data, error } = await supabase
       .from('scores')
-      .update({ course_id: course, score_value, date_played, notes })
-      .eq('score_id', scoreId)
-      .select();
-    console.log('Update query result:', { data, error });
+      .select('score_id, user_id, tournament_id, course_id, score_value, date_played, notes')
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Scores retrieval error:', error.message);
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message })
+      };
+    }
+    console.log('Scores retrieved:', data);
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ scores: data })
+    };
+  }
 
+  // Route: GET /api/tournament-scores/:tournamentId
+  if (path.startsWith('/api/tournament-scores/') && event.httpMethod === 'GET') {
+    const tournamentId = path.split('/')[3];
+    console.log('Handling /api/tournament-scores/:tournamentId GET request, tournamentId:', tournamentId);
+    if (!token) {
+      console.error('No authorization token provided');
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+      };
+    }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !sessionData?.user) {
+      console.error('Session error:', sessionError?.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+      };
+    }
+    const userId = sessionData.user.id;
+    console.log('Fetching tournament scores for user:', userId, 'tournamentId:', tournamentId);
+    const { data, error } = await supabase
+      .from('scores')
+      .select('score_id, user_id, tournament_id, course_id, score_value, date_played, notes')
+      .eq('tournament_id', tournamentId);
+    if (error) {
+      console.error('Tournament scores retrieval error:', error.message);
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message })
+      };
+    }
+    console.log('Tournament scores retrieved:', data);
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ scores: data })
+    };
+  }
+
+  // Route: POST /api/scores
+  if (path === '/api/scores' && event.httpMethod === 'POST') {
+    console.log('Handling /api/scores POST request');
+    const body = JSON.parse(event.body || '{}');
+    const { userId, score, course, date_played, notes, tournament_id } = body;
+    console.log('POST /api/scores body:', body);
+    if (!userId || !score || !course || !date_played) {
+      console.log('Missing required fields: userId, score, course, date_played');
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'userId, score, course, and date_played are required' })
+      };
+    }
+    if (!token) {
+      console.error('No authorization token provided');
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+      };
+    }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !sessionData?.user) {
+      console.error('Session error:', sessionError?.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+      };
+    }
+    // Ensure the logged-in user can only submit scores for themselves (unless admin)
+    const userRole = await checkUserRole(token, supabase);
+    if (userId !== sessionData.user.id && userRole !== 'admin') {
+      console.log('User not authorized to submit score for another user');
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Forbidden: Cannot submit score for another user' })
+      };
+    }
+    const { data, error } = await supabase
+      .from('scores')
+      .insert({
+        user_id: userId,
+        course_id: course,
+        score_value: score,
+        date_played,
+        notes,
+        tournament_id: tournament_id || null
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('Score creation error:', error.message);
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message })
+      };
+    }
+    console.log('Score created:', data);
+    return {
+      statusCode: 201,
+      headers: corsHeaders,
+      body: JSON.stringify({ score: data })
+    };
+  }
+
+  // Route: PUT /api/scores/:scoreId
+  if (path.startsWith('/api/scores/') && event.httpMethod === 'PUT') {
+    const scoreId = path.split('/')[3];
+    console.log('Handling /api/scores/:scoreId PUT request, scoreId:', scoreId);
+    const body = JSON.parse(event.body || '{}');
+    const { course, score_value, date_played, notes } = body;
+    console.log('PUT /api/scores/:scoreId body:', body);
+    if (!course || !score_value || !date_played) {
+      console.log('Missing required fields: course, score_value, date_played');
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'course, score_value, and date_played are required' })
+      };
+    }
+    if (!token) {
+      console.error('No authorization token provided');
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+      };
+    }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !sessionData?.user) {
+      console.error('Session error:', sessionError?.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+      };
+    }
+    const userRole = await checkUserRole(token, supabase);
+    const { data: scoreData, error: fetchError } = await supabase
+      .from('scores')
+      .select('user_id')
+      .eq('score_id', scoreId)
+      .single();
+    if (fetchError || !scoreData) {
+      console.error('Score not found:', fetchError?.message);
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Score not found' })
+      };
+    }
+    if (scoreData.user_id !== sessionData.user.id && userRole !== 'admin') {
+      console.log('User not authorized to update this score');
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Forbidden: Cannot update another user\'s score' })
+      };
+    }
+    const { data, error } = await supabase
+      .from('scores')
+      .update({
+        course_id: course,
+        score_value,
+        date_played,
+        notes
+      })
+      .eq('score_id', scoreId)
+      .select()
+      .single();
     if (error) {
       console.error('Score update error:', error.message);
       return {
@@ -183,26 +240,57 @@ const scoresRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: error.message })
       };
     }
-    if (!data || data.length === 0) {
-      console.error('Score update returned no data');
+    console.log('Score updated:', data);
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ data })
+    };
+  }
+
+  // Route: DELETE /api/scores/:scoreId
+  if (path.startsWith('/api/scores/') && event.httpMethod === 'DELETE') {
+    const scoreId = path.split('/')[3];
+    console.log('Handling /api/scores/:scoreId DELETE request, scoreId:', scoreId);
+    if (!token) {
+      console.error('No authorization token provided');
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+      };
+    }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !sessionData?.user) {
+      console.error('Session error:', sessionError?.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+      };
+    }
+    const userRole = await checkUserRole(token, supabase);
+    const { data: scoreData, error: fetchError } = await supabase
+      .from('scores')
+      .select('user_id')
+      .eq('score_id', scoreId)
+      .single();
+    if (fetchError || !scoreData) {
+      console.error('Score not found:', fetchError?.message);
       return {
         statusCode: 404,
         headers: corsHeaders,
         body: JSON.stringify({ error: 'Score not found' })
       };
     }
-    console.log('Score updated:', data);
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ data: data[0] })
-    };
-  }
-
-  // Route: DELETE /api/scores/:id
-  if (path.startsWith('/api/scores/') && event.httpMethod === 'DELETE') {
-    const scoreId = path.split('/')[3];
-    console.log('Handling /api/scores/:id DELETE request, scoreId:', scoreId);
+    if (scoreData.user_id !== sessionData.user.id && userRole !== 'admin') {
+      console.log('User not authorized to delete this score');
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Forbidden: Cannot delete another user\'s score' })
+      };
+    }
     const { error } = await supabase
       .from('scores')
       .delete()
@@ -212,7 +300,7 @@ const scoresRoutes = async (event, supabase) => {
       return {
         statusCode: 400,
         headers: corsHeaders,
-        bodyComputations: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ error: error.message })
       };
     }
     console.log('Score deleted:', scoreId);
@@ -223,7 +311,6 @@ const scoresRoutes = async (event, supabase) => {
     };
   }
 
-  // If no route matches
   console.log('No matching route found for:', path, event.httpMethod);
   return {
     statusCode: 404,
