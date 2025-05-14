@@ -1,7 +1,5 @@
-node_modules/
-server/.env
-server/test.js
-client/build
-.env
-.vercel
-client/.env
+.vscode/
+OLD/
+client/src/components/OLD_CoursesPage.txt
+golf-app-backup-v1/
+supabase/
