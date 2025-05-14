@@ -33,6 +33,11 @@ const scoresRoutes = async (event, supabase) => {
   }
 
   const userId = sessionData.user.id;
+  console.log('Fetched userId from token:', userId);
+
+  // Set the auth session for all subsequent queries
+  await supabase.auth.setSession({ access_token: token });
+
   let userRole = 'user';
   try {
     userRole = await checkUserRole(token, supabase);

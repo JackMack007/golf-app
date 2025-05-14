@@ -13,41 +13,43 @@ const usersRoutes = async (event, supabase) => {
   const token = event.headers['authorization']?.split(' ')[1];
   console.log('Authorization token:', token);
 
+  if (!token) {
+    console.error('No authorization token provided');
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Unauthorized: No token provided' })
+    };
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
+  if (sessionError || !sessionData?.user) {
+    console.error('Session error:', sessionError?.message);
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+    };
+  }
+
+  const userId = sessionData.user.id;
+  console.log('Fetched userId from token:', userId);
+
+  // Set the auth session for all subsequent queries
+  await supabase.auth.setSession({ access_token: token });
+
+  let userRole = 'user';
+  try {
+    userRole = await checkUserRole(token, supabase);
+    console.log('User role retrieved:', userRole);
+  } catch (error) {
+    console.error('Role check error, defaulting to user role:', error.message);
+    userRole = 'user';
+  }
+
   // Route: GET /api/users (Admin Only)
   if (path === '/api/users' && event.httpMethod === 'GET') {
     console.log('Handling /api/users request');
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    let userRole;
-    let userId;
-    try {
-      userRole = await checkUserRole(token, supabase);
-      console.log('User role retrieved:', userRole);
-      const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-      if (sessionError || !sessionData?.user) {
-        console.error('Session error:', sessionError?.message);
-        return {
-          statusCode: 401,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-        };
-      }
-      userId = sessionData.user.id;
-      console.log('Authenticated userId for GET /api/users:', userId);
-    } catch (error) {
-      console.error('Role check error:', error.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
-      };
-    }
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -79,27 +81,8 @@ const usersRoutes = async (event, supabase) => {
 
   // Route: GET /api/users/:id (Admin Only)
   if (path.startsWith('/api/users/') && event.httpMethod === 'GET') {
-    const userId = path.split('/')[3];
-    console.log('Handling /api/users/:id GET request, userId:', userId);
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    let userRole;
-    try {
-      userRole = await checkUserRole(token, supabase);
-    } catch (error) {
-      console.error('Role check error:', error.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
-      };
-    }
+    const userIdParam = path.split('/')[3];
+    console.log('Handling /api/users/:id GET request, userId:', userIdParam);
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -111,7 +94,7 @@ const usersRoutes = async (event, supabase) => {
     const { data, error } = await supabase
       .from('users')
       .select('user_id, email, name, handicap')
-      .eq('user_id', userId)
+      .eq('user_id', userIdParam)
       .single();
     if (error || !data) {
       console.error('User retrieval error:', error?.message);
@@ -131,8 +114,8 @@ const usersRoutes = async (event, supabase) => {
 
   // Route: PUT /api/users/:id (Admin Only)
   if (path.startsWith('/api/users/') && event.httpMethod === 'PUT') {
-    const userId = path.split('/')[3];
-    console.log('Handling /api/users/:id PUT request, userId:', userId);
+    const userIdParam = path.split('/')[3];
+    console.log('Handling /api/users/:id PUT request, userId:', userIdParam);
     const { name, email, handicap } = JSON.parse(event.body || '{}');
     console.log('PUT /api/users/:id body:', { name, email, handicap });
     if (!name || !email || handicap === undefined) {
@@ -152,26 +135,6 @@ const usersRoutes = async (event, supabase) => {
         body: JSON.stringify({ error: 'handicap must be a non-negative number' })
       };
     }
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    let userRole;
-    try {
-      userRole = await checkUserRole(token, supabase);
-      console.log('User role retrieved:', userRole);
-    } catch (error) {
-      console.error('Role check error:', error.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
-      };
-    }
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -183,7 +146,7 @@ const usersRoutes = async (event, supabase) => {
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
       .select('user_id')
-      .eq('user_id', userId)
+      .eq('user_id', userIdParam)
       .single();
     if (fetchError || !existingUser) {
       console.error('User not found:', fetchError?.message);
@@ -196,7 +159,7 @@ const usersRoutes = async (event, supabase) => {
     const { data, error } = await supabase
       .from('users')
       .update({ name, email, handicap: parsedHandicap })
-      .eq('user_id', userId)
+      .eq('user_id', userIdParam)
       .select();
     if (error) {
       console.error('User update error:', error.message);
@@ -224,28 +187,8 @@ const usersRoutes = async (event, supabase) => {
 
   // Route: DELETE /api/users/:id (Admin Only)
   if (path.startsWith('/api/users/') && event.httpMethod === 'DELETE') {
-    const userId = path.split('/')[3];
-    console.log('Handling /api/users/:id DELETE request, userId:', userId);
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    let userRole;
-    try {
-      userRole = await checkUserRole(token, supabase);
-      console.log('User role retrieved:', userRole);
-    } catch (error) {
-      console.error('Role check error:', error.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: ' + error.message })
-      };
-    }
+    const userIdParam = path.split('/')[3];
+    console.log('Handling /api/users/:id DELETE request, userId:', userIdParam);
     if (userRole !== 'admin') {
       console.log('User role not authorized:', userRole);
       return {
@@ -257,7 +200,7 @@ const usersRoutes = async (event, supabase) => {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('user_id, auth_user_id')
-      .eq('user_id', userId)
+      .eq('user_id', userIdParam)
       .single();
     if (userError || !userData) {
       console.error('User not found:', userError?.message);
@@ -270,7 +213,7 @@ const usersRoutes = async (event, supabase) => {
     const { data: associatedScores, error: scoreError } = await supabase
       .from('scores')
       .select('score_id')
-      .eq('user_id', userId);
+      .eq('user_id', userIdParam);
     if (scoreError) {
       console.error('Error checking associated scores:', scoreError.message);
       return {
@@ -290,7 +233,7 @@ const usersRoutes = async (event, supabase) => {
     const { error: deleteError } = await supabase
       .from('users')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', userIdParam);
     if (deleteError) {
       console.error('User deletion error:', deleteError.message);
       return {
@@ -304,7 +247,7 @@ const usersRoutes = async (event, supabase) => {
       console.error('Auth user deletion error:', authError.message);
       console.warn('Proceeding despite auth deletion error; user already removed from users table');
     }
-    console.log('User deleted:', userId);
+    console.log('User deleted:', userIdParam);
     return {
       statusCode: 200,
       headers: corsHeaders,
@@ -315,25 +258,6 @@ const usersRoutes = async (event, supabase) => {
   // Route: GET /api/profile
   if (path === '/api/profile' && event.httpMethod === 'GET') {
     console.log('Handling /api/profile GET request');
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-    if (sessionError || !sessionData?.user) {
-      console.error('Session error:', sessionError?.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-      };
-    }
-    const userId = sessionData.user.id;
-    console.log('Fetching profile for userId:', userId);
     const { data, error } = await supabase
       .from('users')
       .select('auth_user_id, name, email, handicap, user_role')
@@ -368,7 +292,7 @@ const usersRoutes = async (event, supabase) => {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        user_id: userData.auth_user_id, // Add user_id to the response
+        user_id: userData.auth_user_id,
         name: userData.name || '',
         email: userData.email,
         handicap: userData.handicap || 0,
@@ -382,24 +306,6 @@ const usersRoutes = async (event, supabase) => {
     console.log('Handling /api/profile PUT request');
     const { name, email, handicap } = JSON.parse(event.body || '{}');
     console.log('PUT /api/profile body:', { name, email, handicap });
-    if (!token) {
-      console.error('No authorization token provided');
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No token provided' })
-      };
-    }
-    const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
-    if (sessionError || !sessionData?.user) {
-      console.error('Session error:', sessionError?.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
-      };
-    }
-    const userId = sessionData.user.id;
     const { data: currentUser, error: fetchError } = await supabase
       .from('users')
       .select('auth_user_id, name, email, handicap, user_role')
@@ -437,7 +343,7 @@ const usersRoutes = async (event, supabase) => {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        user_id: data.auth_user_id, // Add user_id to the response
+        user_id: data.auth_user_id,
         name: data.name || '',
         email: data.email,
         handicap: data.handicap || 0,
@@ -446,7 +352,6 @@ const usersRoutes = async (event, supabase) => {
     };
   }
 
-  // If no route matches
   console.log('No matching route found for:', path, event.httpMethod);
   return {
     statusCode: 404,
