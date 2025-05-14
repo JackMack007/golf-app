@@ -24,6 +24,26 @@ exports.handler = async function(event, context) {
     };
   }
 
+  // Extract the token from the Authorization header
+  const token = event.headers['authorization']?.split(' ')[1];
+  console.log('Authorization token:', token);
+
+  // Set the auth session for all subsequent queries
+  if (token) {
+    console.log('Setting auth session with token:', token);
+    const { error: sessionError } = await supabase.auth.setSession({ access_token: token });
+    if (sessionError) {
+      console.error('Failed to set auth session:', sessionError.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
+      };
+    }
+  } else {
+    console.log('No authorization token provided');
+  }
+
   // Handle OPTIONS preflight request
   if (event.httpMethod === 'OPTIONS') {
     console.log('Handling OPTIONS preflight request');
@@ -46,7 +66,7 @@ exports.handler = async function(event, context) {
     if (path.startsWith('/api/auth')) {
       return await authRoutes(event, supabase);
     }
-    if (path.startsWith('/api/scores')) {
+    if (path.startsWith('/api/scores') || path.startsWith('/api/tournament-scores')) {
       return await scoresRoutes(event, supabase);
     }
     if (path.startsWith('/api/users') || path === '/api/profile') {
