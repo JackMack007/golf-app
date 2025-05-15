@@ -4,7 +4,7 @@
   publish = "build"
 
 [functions]
-  directory = "functions"
+  directory = "client/functions"
   node_bundler = "esbuild"
 
 [build.environment]

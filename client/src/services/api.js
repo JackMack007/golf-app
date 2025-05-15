@@ -10,35 +10,44 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     console.log('Interceptor - Starting request for URL:', config.url);
+    console.log('Interceptor - Full request URL:', `${config.baseURL}${config.url}`);
+    console.log('Interceptor - Base URL:', config.baseURL);
     let session;
     try {
       session = JSON.parse(localStorage.getItem('session'));
-      console.log('Interceptor - Session parsed:', session);
+      console.log('Interceptor - Session parsed:', session ? { ...session, access_token: session.access_token?.substring(0, 10) + '...' } : 'none');
     } catch (error) {
       console.error('Interceptor - Failed to parse session from localStorage:', error.message);
       session = null;
     }
     if (session && session.access_token) {
       config.headers.Authorization = `Bearer ${session.access_token}`;
-      console.log('API request - URL:', config.url, 'Token:', session.access_token);
+      console.log('API request - URL:', `${config.baseURL}${config.url}`, 'Token:', session.access_token.substring(0, 10) + '...');
     } else {
-      console.log('API request - URL:', config.url, 'No token found');
+      console.log('API request - URL:', `${config.baseURL}${config.url}`, 'No token found');
     }
     return config;
   },
   (error) => {
-    console.error('Interceptor - Request error:', error.message);
+    console.error('Interceptor - Request error:', error.message, error.stack);
     return Promise.reject(error);
   }
 );
 
 api.interceptors.response.use(
   (response) => {
-    console.log('API response - URL:', response.config.url, 'Status:', response.status);
+    console.log('API response - URL:', response.config.url, 'Status:', response.status, 'Data:', response.data);
     return response;
   },
   (error) => {
     console.error('API response error - URL:', error.config?.url, 'Status:', error.response?.status, 'Message:', error.response?.data?.error || error.message);
+    console.error('API response error - Full details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+      config: error.config
+    });
     return Promise.reject(error);
   }
 );
