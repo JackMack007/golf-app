@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { UserContext } from './context/UserContext';
 import Home from './components/Home';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
@@ -9,25 +10,44 @@ import AdminUserScores from './components/AdminUserScores';
 import AdminCourses from './components/AdminCourses';
 import AdminTournaments from './components/AdminTournaments';
 import ScoresPage from './components/ScoresPage';
-import { UserContext } from './context/UserContext';
 
 const AppRoutes = () => {
   const { user } = useContext(UserContext);
 
-  console.log('AppRoutes: user =', user); // Debug log to check user object
+  console.log('AppRoutes: user =', user);
 
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/scores" element={<ScoresPage />} />
       <Route path="/login" element={user ? <Navigate to="/profile" /> : <LoginPage />} />
       <Route path="/signup" element={user ? <Navigate to="/profile" /> : <SignupPage />} />
       <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" />} />
-      <Route path="/admin/users" element={<AdminUsers />} />
-      <Route path="/admin/users/:userId/scores" element={<AdminUserScores />} />
-      <Route path="/admin/courses" element={<AdminCourses />} />
-      <Route path="/admin/tournaments" element={<AdminTournaments />} />
-      <Route path="/test-tournaments" element={<div>Test Tournaments Route</div>} /> {/* Temporary route for debugging */}
+      <Route path="/scores" element={user ? <ScoresPage /> : <Navigate to="/login" />} />
+      <Route
+        path="/admin/users"
+        element={
+          user && user.role === 'admin' ? <AdminUsers /> : <Navigate to={user ? "/profile" : "/login"} />
+        }
+      />
+      <Route
+        path="/admin/users/:userId/scores"
+        element={
+          user && user.role === 'admin' ? <AdminUserScores /> : <Navigate to={user ? "/profile" : "/login"} />
+        }
+      />
+      <Route
+        path="/admin/courses"
+        element={
+          user && user.role === 'admin' ? <AdminCourses /> : <Navigate to={user ? "/profile" : "/login"} />
+        }
+      />
+      <Route
+        path="/admin/tournaments"
+        element={
+          user && user.role === 'admin' ? <AdminTournaments /> : <Navigate to={user ? "/profile" : "/login"} />
+        }
+      />
+      <Route path="/test-tournaments" element={<div>Test Tournaments Route</div>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

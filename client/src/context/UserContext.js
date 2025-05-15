@@ -1,4 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { getProfile } from '../services/api';
 
 const UserContext = createContext();
 
@@ -7,51 +9,71 @@ const UserProvider = ({ children }) => {
   const [session, setSession] = useState(JSON.parse(localStorage.getItem('session')));
   const [error, setError] = useState(null);
 
-  // Function to fetch user profile
+  // Initialize Supabase client for token refresh
+  const supabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_KEY
+  );
+
+  // Function to fetch user profile using api.js
   const fetchUserProfile = async (accessToken) => {
     try {
-      const response = await fetch('https://golf-app-backend.netlify.app/.netlify/functions/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await getProfile();
       console.log('fetchUserProfile - Response status:', response.status);
-      const data = await response.json();
-      console.log('fetchUserProfile - Response data:', data);
+      console.log('fetchUserProfile - Response data:', response.data);
 
-      if (data.error) {
-        console.error('Profile fetch error:', data.error);
-        localStorage.removeItem('session');
-        setSession(null);
-        setUser(null);
-        setError(data.error);
-        return false;
-      } else {
-        setUser(data);
-        setError(null);
-        return true;
+      if (response.status !== 200) {
+        throw new Error(response.data.error || 'Failed to fetch profile');
       }
+
+      setUser(response.data);
+      setError(null);
+      return true;
     } catch (err) {
       console.error('Profile fetch error:', err.message);
-      localStorage.removeItem('session');
-      setSession(null);
-      setUser(null);
-      setError('Failed to fetch user profile');
       return false;
     }
   };
 
-  // Manual refresh function
+  // Function to refresh the access token
+  const refreshToken = async () => {
+    try {
+      const storedSession = JSON.parse(localStorage.getItem('session'));
+      if (!storedSession || !storedSession.refresh_token) {
+        throw new Error('No refresh token available');
+      }
+      const { data, error } = await supabase.auth.refreshSession({ refresh_token: storedSession.refresh_token });
+      if (error) {
+        throw new Error(error.message);
+      }
+      console.log('Token refreshed successfully:', data.session);
+      localStorage.setItem('session', JSON.stringify(data.session));
+      setSession(data.session);
+      return data.session.access_token;
+    } catch (error) {
+      console.error('Token refresh failed:', error.message);
+      return null;
+    }
+  };
+
+  // Manual refresh function with token refresh handling
   const refreshUser = useCallback(async () => {
-    const storedSession = JSON.parse(localStorage.getItem('session'));
+    let storedSession = JSON.parse(localStorage.getItem('session'));
     if (storedSession && storedSession.access_token) {
-      const success = await fetchUserProfile(storedSession.access_token);
+      let success = await fetchUserProfile(storedSession.access_token);
       if (!success) {
-        console.log('Token refresh failed, clearing session');
-        localStorage.removeItem('session');
-        setSession(null);
-        setUser(null);
+        // Attempt to refresh the token
+        const newAccessToken = await refreshToken();
+        if (newAccessToken) {
+          success = await fetchUserProfile(newAccessToken);
+        }
+        if (!success) {
+          console.log('Profile fetch failed after refresh, clearing session');
+          localStorage.removeItem('session');
+          setSession(null);
+          setUser(null);
+          setError('Failed to fetch user profile');
+        }
       }
     } else {
       setUser(null);
@@ -102,4 +124,4 @@ const UserProvider = ({ children }) => {
   );
 };
 
-export { UserContext, UserProvider };	
+export { UserContext, UserProvider };
