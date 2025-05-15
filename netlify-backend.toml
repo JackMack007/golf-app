@@ -1,0 +1,6 @@
+[build]
+  command = "echo 'No build required for functions-only site'"
+  publish = "client/functions"
+
+[functions]
+  directory = "client/functions"
