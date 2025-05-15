@@ -1,3 +1,4 @@
 [build]
-  command = "cd client && npm run build"
-  publish = "client/build"
+  base = "client"
+  command = "npm run build"
+  publish = "build"
