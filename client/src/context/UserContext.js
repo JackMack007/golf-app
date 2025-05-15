@@ -1,25 +1,27 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import supabase from '../supabaseClient'; // Import singleton client
+import supabase from '../supabaseClient';
 import { getProfile } from '../services/api';
 
 const UserContext = createContext();
 
 const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [session, setSession] = useState(JSON.parse(localStorage.getItem('session')));
+  const [session, setSession] = useState(null);
   const [error, setError] = useState(null);
 
   // Function to clear session
   const clearSession = () => {
     console.log('Clearing session from Local Storage');
+    console.log('Before clearing session:', localStorage.getItem('session'));
     localStorage.removeItem('session');
+    console.log('After clearing session:', localStorage.getItem('session'));
     setSession(null);
     setUser(null);
     setError(null);
   };
 
   // Function to fetch user profile using api.js
-  const fetchUserProfile = async (accessToken) => {
+  const fetchUserProfile = async () => {
     try {
       const response = await getProfile();
       console.log('fetchUserProfile - Response status:', response.status);
@@ -34,6 +36,7 @@ const UserProvider = ({ children }) => {
       return true;
     } catch (err) {
       console.error('Profile fetch error:', err.message);
+      clearSession();
       return false;
     }
   };
@@ -62,14 +65,13 @@ const UserProvider = ({ children }) => {
 
   // Manual refresh function with token refresh handling
   const refreshUser = useCallback(async () => {
-    let storedSession = JSON.parse(localStorage.getItem('session'));
+    const storedSession = JSON.parse(localStorage.getItem('session'));
     if (storedSession && storedSession.access_token) {
-      let success = await fetchUserProfile(storedSession.access_token);
+      let success = await fetchUserProfile();
       if (!success) {
-        // Attempt to refresh the token
         const newAccessToken = await refreshToken();
         if (newAccessToken) {
-          success = await fetchUserProfile(newAccessToken);
+          success = await fetchUserProfile();
         }
         if (!success) {
           console.log('Profile fetch failed after refresh, clearing session');
@@ -94,22 +96,18 @@ const UserProvider = ({ children }) => {
         console.log('Session changed, refreshing user profile');
         setSession(newSession);
         if (newSession && newSession.access_token) {
-          fetchUserProfile(newSession.access_token);
+          fetchUserProfile();
         } else {
           clearSession();
         }
       }
     };
 
-    // Add event listener for storage changes (cross-tab)
     window.addEventListener('storage', handleStorageChange);
-
-    // Poll localStorage for changes in the same tab
     const interval = setInterval(() => {
       handleStorageChange();
     }, 1000);
 
-    // Cleanup on unmount
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);

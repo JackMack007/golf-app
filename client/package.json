@@ -1,6 +1,6 @@
 {
   "name": "golf-app-client",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "engines": {
     "node": ">=18.0.0"
   },
