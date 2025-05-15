@@ -28,8 +28,8 @@ exports.handler = async function(event, context) {
   const token = event.headers['authorization']?.split(' ')[1];
   console.log('Authorization token:', token);
 
-  // Validate the token and set the auth session
-  if (token) {
+  // Validate the token
+  if (token && !event.path.startsWith('/api/auth')) { // Skip token validation for auth routes
     console.log('Validating token:', token);
     const { data: userData, error: sessionError } = await supabase.auth.getUser(token);
     if (sessionError || !userData?.user) {
@@ -41,18 +41,8 @@ exports.handler = async function(event, context) {
       };
     }
     console.log('Token validation successful, user:', userData.user.id);
-    const setSessionResult = await supabase.auth.setSession({ access_token: token });
-    if (setSessionResult.error) {
-      console.error('Failed to set auth session:', setSessionResult.error.message);
-      return {
-        statusCode: 401,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: Failed to set session' })
-      };
-    }
-    console.log('Auth session set successfully');
   } else {
-    console.log('No authorization token provided');
+    console.log('No authorization token provided or auth route, skipping validation');
   }
 
   // Handle OPTIONS preflight request
