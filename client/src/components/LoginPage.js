@@ -7,7 +7,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { setUser, refreshUser } = useContext(UserContext);
+  const { setUser, refreshUser, clearSession } = useContext(UserContext);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -15,6 +15,9 @@ const LoginPage = () => {
     setError('');
 
     try {
+      // Clear any existing session before attempting login
+      clearSession();
+
       const response = await signin(email, password);
       if (response.status !== 200) {
         throw new Error(response.data.error || 'Login failed');
@@ -22,14 +25,13 @@ const LoginPage = () => {
 
       localStorage.setItem('session', JSON.stringify(response.data.session));
       setUser(response.data.user);
-      await refreshUser(); // Ensure refreshUser completes
+      await refreshUser();
       console.log('LoginPage: User after refresh =', response.data.user);
       navigate('/profile');
     } catch (err) {
       console.error('Login error:', err.message);
       setError(err.message);
-      localStorage.removeItem('session');
-      setUser(null);
+      clearSession();
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import supabase from '../supabaseClient'; // Import singleton client
 import { getProfile } from '../services/api';
 
 const UserContext = createContext();
@@ -9,11 +9,14 @@ const UserProvider = ({ children }) => {
   const [session, setSession] = useState(JSON.parse(localStorage.getItem('session')));
   const [error, setError] = useState(null);
 
-  // Initialize Supabase client for token refresh
-  const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL,
-    process.env.REACT_APP_SUPABASE_KEY
-  );
+  // Function to clear session
+  const clearSession = () => {
+    console.log('Clearing session from Local Storage');
+    localStorage.removeItem('session');
+    setSession(null);
+    setUser(null);
+    setError(null);
+  };
 
   // Function to fetch user profile using api.js
   const fetchUserProfile = async (accessToken) => {
@@ -52,6 +55,7 @@ const UserProvider = ({ children }) => {
       return data.session.access_token;
     } catch (error) {
       console.error('Token refresh failed:', error.message);
+      clearSession();
       return null;
     }
   };
@@ -69,15 +73,11 @@ const UserProvider = ({ children }) => {
         }
         if (!success) {
           console.log('Profile fetch failed after refresh, clearing session');
-          localStorage.removeItem('session');
-          setSession(null);
-          setUser(null);
-          setError('Failed to fetch user profile');
+          clearSession();
         }
       }
     } else {
-      setUser(null);
-      setError(null);
+      clearSession();
     }
   }, []);
 
@@ -96,8 +96,7 @@ const UserProvider = ({ children }) => {
         if (newSession && newSession.access_token) {
           fetchUserProfile(newSession.access_token);
         } else {
-          setUser(null);
-          setError(null);
+          clearSession();
         }
       }
     };
@@ -118,7 +117,7 @@ const UserProvider = ({ children }) => {
   }, [session]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, error, refreshUser }}>
+    <UserContext.Provider value={{ user, setUser, error, refreshUser, clearSession }}>
       {children}
     </UserContext.Provider>
   );
