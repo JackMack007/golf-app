@@ -28,18 +28,29 @@ exports.handler = async function(event, context) {
   const token = event.headers['authorization']?.split(' ')[1];
   console.log('Authorization token:', token);
 
-  // Set the auth session for all subsequent queries
+  // Validate the token and set the auth session
   if (token) {
-    console.log('Setting auth session with token:', token);
-    const { error: sessionError } = await supabase.auth.setSession({ access_token: token });
-    if (sessionError) {
-      console.error('Failed to set auth session:', sessionError.message);
+    console.log('Validating token:', token);
+    const { data: userData, error: sessionError } = await supabase.auth.getUser(token);
+    if (sessionError || !userData?.user) {
+      console.error('Token validation failed:', sessionError?.message);
       return {
         statusCode: 401,
         headers: corsHeaders,
         body: JSON.stringify({ error: 'Unauthorized: Invalid session token' })
       };
     }
+    console.log('Token validation successful, user:', userData.user.id);
+    const setSessionResult = await supabase.auth.setSession({ access_token: token });
+    if (setSessionResult.error) {
+      console.error('Failed to set auth session:', setSessionResult.error.message);
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unauthorized: Failed to set session' })
+      };
+    }
+    console.log('Auth session set successfully');
   } else {
     console.log('No authorization token provided');
   }

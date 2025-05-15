@@ -11,7 +11,7 @@ const usersRoutes = async (event, supabase) => {
   console.log('Headers in usersRoutes:', event.headers);
 
   const token = event.headers['authorization']?.split(' ')[1];
-  console.log('Authorization token:', token);
+  console.log('Authorization token in usersRoutes:', token);
 
   if (!token) {
     console.error('No authorization token provided');
@@ -24,7 +24,7 @@ const usersRoutes = async (event, supabase) => {
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getUser(token);
   if (sessionError || !sessionData?.user) {
-    console.error('Session error:', sessionError?.message);
+    console.error('Session validation in usersRoutes failed:', sessionError?.message);
     return {
       statusCode: 401,
       headers: corsHeaders,
@@ -33,10 +33,7 @@ const usersRoutes = async (event, supabase) => {
   }
 
   const userId = sessionData.user.id;
-  console.log('Fetched userId from token:', userId);
-
-  // Set the auth session for all subsequent queries
-  await supabase.auth.setSession({ access_token: token });
+  console.log('Fetched userId from token in usersRoutes:', userId);
 
   let userRole = 'user';
   try {
@@ -263,7 +260,7 @@ const usersRoutes = async (event, supabase) => {
       .select('auth_user_id, name, email, handicap, user_role')
       .eq('auth_user_id', userId);
     if (error) {
-      console.error('User retrieval error:', error.message);
+      console.error('User retrieval error in GET /api/profile:', error.message);
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -271,7 +268,7 @@ const usersRoutes = async (event, supabase) => {
       };
     }
     if (!data || data.length === 0) {
-      console.error('No user found for auth_user_id:', userId);
+      console.error('No user found for auth_user_id in GET /api/profile:', userId);
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -279,7 +276,7 @@ const usersRoutes = async (event, supabase) => {
       };
     }
     if (data.length > 1) {
-      console.error('Multiple users found for auth_user_id:', userId);
+      console.error('Multiple users found for auth_user_id in GET /api/profile:', userId);
       return {
         statusCode: 500,
         headers: corsHeaders,
@@ -287,7 +284,7 @@ const usersRoutes = async (event, supabase) => {
       };
     }
     const userData = data[0];
-    console.log('User retrieved:', userData);
+    console.log('User retrieved in GET /api/profile:', userData);
     return {
       statusCode: 200,
       headers: corsHeaders,
@@ -312,7 +309,7 @@ const usersRoutes = async (event, supabase) => {
       .eq('auth_user_id', userId)
       .single();
     if (fetchError || !currentUser) {
-      console.error('User fetch error:', fetchError?.message);
+      console.error('User fetch error in PUT /api/profile:', fetchError?.message);
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -331,14 +328,14 @@ const usersRoutes = async (event, supabase) => {
       .select()
       .single();
     if (error) {
-      console.error('User update error:', error.message);
+      console.error('User update error in PUT /api/profile:', error.message);
       return {
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ error: error.message })
       };
     }
-    console.log('User profile updated:', data);
+    console.log('User profile updated in PUT /api/profile:', data);
     return {
       statusCode: 200,
       headers: corsHeaders,
